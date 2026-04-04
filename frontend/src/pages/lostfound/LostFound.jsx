@@ -9,14 +9,14 @@ import Pagination from '../../components/ui/Pagination';
 import EmptyState from '../../components/ui/EmptyState';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { formatDate, formatRelative } from '../../utils/formatDate';
-import { Plus, Search, Package } from 'lucide-react';
+import { Plus, Search, Package, CheckCircle2, AlertCircle, ImageOff } from 'lucide-react';
 import { getImageUrl } from '../../utils/imageUrl';
 
 const TABS = [
-  { value: '', label: 'All' },
-  { value: 'lost', label: '🔍 Lost' },
-  { value: 'found', label: '✅ Found' },
-  { value: 'resolved', label: '🎉 Resolved' },
+  { value: '',         label: 'All',      icon: null },
+  { value: 'lost',     label: 'Lost',     icon: <AlertCircle size={13} className="text-danger" /> },
+  { value: 'found',    label: 'Found',    icon: <CheckCircle2 size={13} className="text-accent" /> },
+  { value: 'resolved', label: 'Resolved', icon: <Package size={13} className="text-indigo-400" /> },
 ];
 
 const LostFound = () => {
@@ -88,9 +88,11 @@ const LostFound = () => {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 p-1 bg-white/[0.03] rounded-xl w-fit border border-white/5">
-        {TABS.map(({ value, label }) => (
+        {TABS.map(({ value, label, icon }) => (
           <button key={value} onClick={() => { setTab(value); setPage(1); }}
-            className={`tab-btn ${tab === value ? 'active' : ''}`}>{label}</button>
+            className={`tab-btn flex items-center gap-1.5 ${tab === value ? 'active' : ''}`}>
+            {icon}{label}
+          </button>
         ))}
       </div>
 
@@ -104,21 +106,43 @@ const LostFound = () => {
         <>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map(item => (
-              <div key={item._id} className="glass-card p-5 flex flex-col gap-3 cursor-pointer"
-                onClick={() => navigate(`/lostfound/${item._id}`)}>
-                {item.images?.[0] && (
-                  <div className="w-full h-36 rounded-xl overflow-hidden">
-                    <img src={getImageUrl(item.images[0])} alt={item.title} className="w-full h-full object-cover" />
+              <div key={item._id} className="glass-card p-0 flex flex-col cursor-pointer overflow-hidden"
+                onClick={() => navigate(`/lostfound/${item._id}`)}
+              >
+                {/* Image area — always same height for uniform cards */}
+                <div className="w-full h-36 flex-shrink-0 bg-white/[0.02] border-b border-indigo-500/10 relative overflow-hidden">
+                  {item.images?.[0] ? (
+                    <img
+                      src={getImageUrl(item.images[0])}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  {/* Placeholder shown when no image or image fails to load */}
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-center gap-1"
+                    style={{ display: item.images?.[0] ? 'none' : 'flex' }}
+                  >
+                    <ImageOff size={22} className="text-slate-700" />
+                    <span className="text-slate-600 text-[10px]">No photo</span>
                   </div>
-                )}
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-white text-sm line-clamp-2 flex-1">{item.title}</h3>
-                  <Badge variant={item.status}>{item.status}</Badge>
                 </div>
-                <p className="text-slate-400 text-xs line-clamp-2">{item.description}</p>
-                <div className="flex items-center justify-between mt-auto pt-2 border-t border-indigo-500/10 text-[10px] text-slate-500">
-                  <span>{item.postedBy?.name}</span>
-                  <span>{formatRelative(item.createdAt)}</span>
+
+                {/* Card content */}
+                <div className="p-4 flex flex-col gap-2 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-white text-sm line-clamp-2 flex-1">{item.title}</h3>
+                    <Badge variant={item.status}>{item.status}</Badge>
+                  </div>
+                  <p className="text-slate-400 text-xs line-clamp-2">{item.description}</p>
+                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-indigo-500/10 text-[10px] text-slate-500">
+                    <span>{item.postedBy?.name}</span>
+                    <span>{formatRelative(item.createdAt)}</span>
+                  </div>
                 </div>
               </div>
             ))}
