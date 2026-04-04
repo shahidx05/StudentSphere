@@ -1,13 +1,24 @@
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 
 const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`MongoDB connected: ${conn.connection.host}`);
-  } catch (err) {
-    console.error(`DB Error: ${err.message}`);
-    process.exit(1);
+  let retries = 5;
+  while (retries) {
+    try {
+      const conn = await mongoose.connect(process.env.MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log(`✅  MongoDB Connected: ${conn.connection.host}`);
+      return;
+    } catch (error) {
+      retries -= 1;
+      console.error(`❌  MongoDB connection failed. Retries left: ${retries}`);
+      console.error(error.message);
+      if (retries === 0) {
+        process.exit(1);
+      }
+      await new Promise((res) => setTimeout(res, 3000));
+    }
   }
 };
 

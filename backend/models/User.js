@@ -1,49 +1,58 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
-    required: [true, 'Name is required'], 
-    trim: true 
+const connectionSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: 'pending',
   },
-  email: { 
-    type: String, 
-    required: [true, 'Email is required'], 
-    unique: true, 
-    lowercase: true,
-    trim: true
-  },
-  password: { 
-    type: String, 
-    required: [true, 'Password is required'],
-    minlength: 6,
-    select: false             // never returned in queries by default
-  },
-  role: { 
-    type: String, 
-    enum: ['student', 'teacher', 'admin'], 
-    default: 'student' 
-  },
-  branch: { 
-    type: String, 
-    enum: ['CS', 'IT', 'EC', 'ME', 'CE', 'EE'],
-  },
-  semester: { type: Number, min: 1, max: 8 },
-  college: { type: String, default: 'MITS Gwalior' },
-  avatar: { type: String, default: '' },
-  isActive: { type: Boolean, default: true }
-}, { timestamps: true });
-
-// Hash password before save
-userSchema.pre('save', async function() {
-  if (!this.isModified('password')) return;
-  this.password = await bcrypt.hash(this.password, 10);
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    password: { type: String, required: true, minlength: 6, select: false },
+    role: { type: String, enum: ['student', 'admin'], default: 'student' },
+    department: { type: String, trim: true },
+    branch: { type: String, trim: true },
+    year: { type: Number, min: 1, max: 6 },
+    state: { type: String, trim: true },
+    district: { type: String, trim: true },
+    skills: [{ type: String, trim: true }],
+    profilePhoto: { type: String, default: '' },
+    bio: { type: String, maxlength: 500, default: '' },
+    connections: [connectionSchema],
+    notifications: [
+      {
+        message: String,
+        read: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+  },
+  { timestamps: true }
+);
+
+// Hash password before saving
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const salt = await bcrypt.genSalt(12);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+// Compare password
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);
