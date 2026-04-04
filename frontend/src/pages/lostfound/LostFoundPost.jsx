@@ -8,6 +8,7 @@ import Badge from '../../components/ui/Badge';
 import { formatDate, formatRelative } from '../../utils/formatDate';
 import { ArrowLeft, MapPin, Phone, ExternalLink, CheckCircle, Image as ImgIcon } from 'lucide-react';
 import { useState } from 'react';
+import { getImageUrl } from '../../utils/imageUrl';
 
 const LostFoundPost = () => {
   const { id } = useParams();
@@ -56,12 +57,12 @@ const LostFoundPost = () => {
         {item.images?.length > 0 && (
           <div className="space-y-2">
             <div className="w-full h-56 rounded-xl overflow-hidden bg-surface-2 border border-border">
-              <img src={item.images[imgIdx]} alt={item.title} className="w-full h-full object-cover" />
+              <img src={getImageUrl(item.images[imgIdx])} alt={item.title} className="w-full h-full object-cover" />
             </div>
             {item.images.length > 1 && (
               <div className="flex gap-2">
                 {item.images.map((img, i) => (
-                  <img key={i} src={img} alt="" onClick={() => setImgIdx(i)}
+                  <img key={i} src={getImageUrl(img)} alt="" onClick={() => setImgIdx(i)}
                     className={`w-14 h-14 rounded-lg object-cover cursor-pointer border-2 transition-all ${i === imgIdx ? 'border-primary' : 'border-border'}`} />
                 ))}
               </div>

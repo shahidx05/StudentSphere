@@ -44,7 +44,7 @@ exports.getItems = async (req, res, next) => {
 exports.createItem = async (req, res, next) => {
   try {
     const { title, description, status, locationLost, contactInfo, externalLink } = req.body;
-    const images = req.files ? req.files.map((f) => f.path || `/uploads/${f.filename}`) : [];
+    const images = req.files ? req.files.map((f) => `/uploads/${f.filename}`) : [];
 
     const item = await LostFoundItem.create({
       title, description, status, locationLost, contactInfo, externalLink, images,
@@ -84,7 +84,7 @@ exports.updateItem = async (req, res, next) => {
     Object.assign(item, { title, description, status, locationLost, contactInfo, externalLink });
 
     if (req.files && req.files.length) {
-      item.images = req.files.map((f) => f.path || `/uploads/${f.filename}`);
+      item.images = req.files.map((f) => `/uploads/${f.filename}`);
     }
 
     await item.save();
@@ -137,3 +137,18 @@ exports.lostFoundValidation = [
   body('status').isIn(['lost', 'found']).withMessage('Status must be lost or found.'),
   body('contactInfo').notEmpty().withMessage('Contact info is required.'),
 ];
+
+// @desc    Get lost/found stats
+// @route   GET /api/lostfound/stats
+exports.getStats = async (req, res, next) => {
+  try {
+    const [total, lost, found, resolved] = await Promise.all([
+      LostFoundItem.countDocuments(),
+      LostFoundItem.countDocuments({ status: 'lost' }),
+      LostFoundItem.countDocuments({ status: 'found' }),
+      LostFoundItem.countDocuments({ isResolved: true }),
+    ]);
+    return res.json({ success: true, data: { total, lost, found, resolved } });
+  } catch (err) { next(err); }
+};
+

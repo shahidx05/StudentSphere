@@ -5,6 +5,7 @@ const MarketplaceItem = require('../models/MarketplaceItem');
 const LostFoundItem = require('../models/LostFoundItem');
 const CampusPost = require('../models/CampusPost');
 const User = require('../models/User');
+const Task = require('../models/Task');
 
 // @desc    Get dashboard overview for logged-in user
 // @route   GET /api/dashboard/overview
@@ -78,6 +79,14 @@ exports.getOverview = async (req, res, next) => {
     const user = await User.findById(userId).select('notifications');
     const notifications = (user.notifications || []).slice(-20).reverse();
 
+    // Task stats
+    const taskStats = await Task.aggregate([
+      { $match: { userId } },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+    const taskSummary = { pending: 0, 'in-progress': 0, completed: 0 };
+    taskStats.forEach(({ _id, count }) => { taskSummary[_id] = count; });
+
     return res.json({
       success: true,
       data: {
@@ -88,6 +97,7 @@ exports.getOverview = async (req, res, next) => {
         recentLostFound,
         campusAnnouncements,
         notifications,
+        taskSummary,
       },
     });
   } catch (err) {

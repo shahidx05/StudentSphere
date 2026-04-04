@@ -27,7 +27,6 @@ const Register = () => {
     ev.preventDefault();
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-
     setLoading(true);
     try {
       await register(form);
@@ -36,115 +35,110 @@ const Register = () => {
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.errors?.[0]?.message || 'Registration failed';
       toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      <div className="fixed top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: '#0f0f1a' }}>
+      {/* Background blobs */}
+      <div className="fixed top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+      <div className="fixed bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)', transform: 'translate(-30%, 30%)' }} />
 
-      <div className="w-full max-w-lg relative">
+      <div className="w-full max-w-lg relative z-10 py-8">
+        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-primary mx-auto flex items-center justify-center mb-4 shadow-glow">
+          <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center mb-4 shadow-2xl shadow-indigo-500/25">
             <GraduationCap size={28} className="text-white" />
           </div>
-          <h1 className="font-display text-3xl font-bold text-text-primary">
-            Student<span className="text-primary">Sphere</span>
-          </h1>
-          <p className="text-text-muted text-sm mt-1">Join thousands of students on the platform</p>
+          <h1 className="font-display text-3xl font-bold gradient-text mb-1">StudentSphere</h1>
+          <p className="text-slate-500 text-sm">Join thousands of students on the platform</p>
         </div>
 
-        <div className="card-base shadow-card">
-          <h2 className="font-display text-xl font-bold text-text-primary mb-1">Create your account</h2>
-          <p className="text-text-muted text-sm mb-6">Fill in your details to get started</p>
+        <div className="glass-card p-8" style={{ transform: 'none' }}>
+          <h2 className="font-display text-xl font-bold text-white mb-1">Create account</h2>
+          <p className="text-slate-400 text-sm mb-6">Fill in your details to get started</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Full Name</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Full Name</label>
               <div className="relative">
-                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 <input type="text" value={form.name} onChange={set('name')} placeholder="Aarav Sharma"
-                  className={`input-base pl-9 ${errors.name ? 'border-danger' : ''}`} />
+                  className={`input-field pl-10 ${errors.name ? 'border-red-500' : ''}`} />
               </div>
-              {errors.name && <p className="text-danger text-xs mt-1">{errors.name}</p>}
+              {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 <input type="email" value={form.email} onChange={set('email')} placeholder="you@university.edu"
-                  className={`input-base pl-9 ${errors.email ? 'border-danger' : ''}`} />
+                  className={`input-field pl-10 ${errors.email ? 'border-red-500' : ''}`} />
               </div>
-              {errors.email && <p className="text-danger text-xs mt-1">{errors.email}</p>}
+              {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Password</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 <input type={showPass ? 'text' : 'password'} value={form.password} onChange={set('password')}
                   placeholder="Min. 6 characters"
-                  className={`input-base pl-9 pr-10 ${errors.password ? 'border-danger' : ''}`} />
+                  className={`input-field pl-10 pr-11 ${errors.password ? 'border-red-500' : ''}`} />
                 <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text-primary transition-colors">
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-danger text-xs mt-1">{errors.password}</p>}
+              {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
             </div>
 
             {/* Department + Branch */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Department</label>
-                <div className="relative">
-                  <Building size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                  <select value={form.department} onChange={set('department')} className="input-base pl-9 pr-8">
-                    <option value="">Select</option>
-                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Department</label>
+                <select value={form.department} onChange={set('department')} className="input-field">
+                  <option value="">Select</option>
+                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Branch</label>
-                <select value={form.branch} onChange={set('branch')} className="input-base">
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Branch</label>
+                <select value={form.branch} onChange={set('branch')} className="input-field">
                   <option value="">Select</option>
-                  {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+                  {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                 </select>
               </div>
             </div>
 
             {/* Year */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Year of Study</label>
-              <select value={form.year} onChange={set('year')} className="input-base">
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Year of Study</label>
+              <select value={form.year} onChange={set('year')} className="input-field">
                 <option value="">Select Year</option>
-                {YEARS.map((y) => <option key={y} value={y}>Year {y}</option>)}
+                {YEARS.map(y => <option key={y} value={y}>Year {y}</option>)}
               </select>
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
-              {loading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>Create Account <ArrowRight size={16} /></>
-              )}
+              {loading
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <><span>Create Account</span><ArrowRight size={16} /></>
+              }
             </button>
           </form>
 
-          <p className="text-center text-text-muted text-sm mt-6">
+          <p className="text-center text-slate-500 text-sm mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:text-primary-light transition-colors font-medium">
-              Sign in
-            </Link>
+            <Link to="/login" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">Sign in</Link>
           </p>
         </div>
       </div>

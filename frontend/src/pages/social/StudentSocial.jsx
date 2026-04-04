@@ -3,147 +3,160 @@ import { useNavigate } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
 import SearchBar from '../../components/ui/SearchBar';
 import Badge from '../../components/ui/Badge';
 import Pagination from '../../components/ui/Pagination';
 import EmptyState from '../../components/ui/EmptyState';
 import { PageSpinner } from '../../components/ui/Spinner';
-import { DEPARTMENTS, BRANCHES, STATES } from '../../utils/constants';
-import { UserPlus, UserCheck, Clock, User2 } from 'lucide-react';
+import { UserPlus, UserCheck, UserX, Users } from 'lucide-react';
+
+const TABS = [
+  { value: 'discover', label: 'Discover' },
+  { value: 'pending', label: 'Requests' },
+  { value: 'connections', label: 'Network' },
+];
 
 const StudentSocial = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [tab, setTab] = useState('discover');
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({ department: '', branch: '', state: '' });
   const [page, setPage] = useState(1);
-  const [connecting, setConnecting] = useState({});
+  const [actionId, setActionId] = useState(null);
 
-  const params = new URLSearchParams({
-    ...(search && { search }),
-    ...(filters.department && { department: filters.department }),
-    ...(filters.branch && { branch: filters.branch }),
-    ...(filters.state && { state: filters.state }),
-    page, limit: 12,
-  }).toString();
+  const params = new URLSearchParams({ ...(search && { search }), page, limit: 12 }).toString();
+  const { data, loading, refetch } = useFetch(
+    tab === 'discover' ? `/api/social/discover?${params}`
+    : tab === 'pending' ? '/api/social/requests/pending'
+    : '/api/social/connections'
+  );
 
-  const { data, loading, refetch } = useFetch(`/api/social/students?${params}`);
   const students = data?.data || [];
-  const pagination = data?.pagination || {};
+  const pagination = tab === 'discover' ? (data?.pagination || {}) : {};
 
-  // Get connection statuses from logged-in user
-  const { data: meData } = useFetch('/api/auth/me');
-  const myConnections = meData?.data?.connections || [];
+  const getInitials = (name) => name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ST';
+  const GRAD_COLORS = [
+    'from-indigo-500 to-purple-600', 'from-purple-500 to-pink-600',
+    'from-emerald-500 to-teal-600', 'from-amber-500 to-orange-500',
+    'from-rose-500 to-red-600', 'from-cyan-500 to-blue-600',
+  ];
 
-  const getConnectionStatus = (studentId) => {
-    const conn = myConnections.find(c => (c.user?._id || c.user) === studentId);
-    return conn?.status || null;
+  const handleConnect = async (userId) => {
+    setActionId(userId);
+    try {
+      const { data: res } = await api.post(`/api/social/connect/${userId}`);
+      toast.success(res.message || 'Request sent!'); refetch();
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+    finally { setActionId(null); }
   };
 
-  const handleConnect = async (studentId) => {
-    setConnecting(c => ({ ...c, [studentId]: true }));
+  const handleAccept = async (userId) => {
+    setActionId(userId);
     try {
-      await api.post(`/api/social/connect/${studentId}`);
-      toast.success('Connection request sent!');
-      refetch();
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
-    finally { setConnecting(c => ({ ...c, [studentId]: false })); }
+      await api.put(`/api/social/connect/${userId}/accept`);
+      toast.success('Connection accepted!'); refetch();
+    } catch { toast.error('Failed'); }
+    finally { setActionId(null); }
+  };
+
+  const handleReject = async (userId) => {
+    setActionId(userId);
+    try {
+      await api.put(`/api/social/connect/${userId}/reject`);
+      toast.success('Request rejected'); refetch();
+    } catch { toast.error('Failed'); }
+    finally { setActionId(null); }
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 slide-up">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="page-header">Student Social</h1>
-          <p className="text-text-muted text-sm">Connect with fellow students</p>
+          <p className="text-sm text-slate-400 mt-1">Expand your network with fellow students</p>
         </div>
-        <button onClick={() => navigate('/social/connections')} className="btn-secondary">
-          <UserCheck size={16} /> My Connections
+        <button onClick={() => navigate('/social/connections')} className="btn-secondary w-fit">
+          <Users size={15} /> My Connections
         </button>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex-1 min-w-[200px]">
-          <SearchBar value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search by name..." />
-        </div>
-        <select value={filters.department} onChange={e => setFilters(f => ({ ...f, department: e.target.value }))} className="input-base w-auto min-w-[150px]">
-          <option value="">All Departments</option>
-          {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <select value={filters.branch} onChange={e => setFilters(f => ({ ...f, branch: e.target.value }))} className="input-base w-auto min-w-[150px]">
-          <option value="">All Branches</option>
-          {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-        <select value={filters.state} onChange={e => setFilters(f => ({ ...f, state: e.target.value }))} className="input-base w-auto min-w-[150px]">
-          <option value="">All States</option>
-          {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+      {/* Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-white/[0.03] rounded-xl w-fit border border-white/5">
+        {TABS.map(({ value, label }) => (
+          <button key={value} onClick={() => { setTab(value); setPage(1); }}
+            className={`tab-btn ${tab === value ? 'active' : ''}`}>{label}</button>
+        ))}
       </div>
 
+      {tab === 'discover' && (
+        <SearchBar value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Search students..." />
+      )}
+
       {loading ? <PageSpinner /> : students.length === 0 ? (
-        <EmptyState icon="users" title="No students found" description="Try changing your search filters." />
+        <EmptyState icon="users" title={tab === 'pending' ? 'No pending requests' : tab === 'connections' ? 'No connections yet' : 'No students found'}
+          description={tab === 'discover' ? 'Try a different search term.' : 'Start connecting with fellow students!'} />
       ) : (
         <>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {students.map((student) => {
-              const status = getConnectionStatus(student._id);
-              const initials = student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-
-              return (
-                <div key={student._id} className="card-base card-glow flex flex-col gap-3">
-                  {/* Avatar */}
-                  <div className="flex items-center gap-3">
-                    <div onClick={() => navigate(`/social/${student._id}`)}
-                      className="w-12 h-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center cursor-pointer overflow-hidden flex-shrink-0">
-                      {student.profilePhoto ? (
-                        <img src={student.profilePhoto} alt={student.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-primary font-bold text-sm">{initials}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-text-primary font-semibold text-sm truncate cursor-pointer hover:text-primary transition-colors"
-                        onClick={() => navigate(`/social/${student._id}`)}>
-                        {student.name}
-                      </p>
-                      <p className="text-text-muted text-xs truncate">{student.branch || student.department}</p>
-                    </div>
-                  </div>
-
-                  {/* Skills */}
-                  {student.skills?.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {student.skills.slice(0, 3).map(s => (
-                        <span key={s} className="text-[10px] bg-primary/5 text-primary/70 border border-primary/10 px-1.5 py-0.5 rounded-full">{s}</span>
-                      ))}
-                      {student.skills.length > 3 && (
-                        <span className="text-[10px] text-muted">+{student.skills.length - 3}</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Connect Button */}
-                  {status === 'accepted' ? (
-                    <div className="flex items-center gap-1.5 justify-center py-1.5 text-accent text-xs font-medium">
-                      <UserCheck size={14} /> Connected
-                    </div>
-                  ) : status === 'pending' ? (
-                    <div className="flex items-center gap-1.5 justify-center py-1.5 text-warning text-xs font-medium">
-                      <Clock size={14} /> Pending
-                    </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {students.map((student, idx) => (
+              <div key={student._id} className="glass-card p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  {student.profilePhoto ? (
+                    <img src={student.profilePhoto} alt={student.name}
+                      className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-500/30 flex-shrink-0" />
                   ) : (
-                    <button onClick={() => handleConnect(student._id)} disabled={connecting[student._id]}
-                      className="btn-secondary w-full py-1.5 text-xs">
-                      <UserPlus size={14} /> Connect
-                    </button>
+                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${GRAD_COLORS[idx % GRAD_COLORS.length]} flex items-center justify-center text-base font-bold text-white flex-shrink-0`}>
+                      {getInitials(student.name)}
+                    </div>
                   )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-white text-sm cursor-pointer hover:text-indigo-400 transition-colors"
+                      onClick={() => navigate(`/social/${student._id}`)}>{student.name}</h3>
+                    <p className="text-slate-500 text-xs">{student.department} · Yr {student.year}</p>
+                  </div>
                 </div>
-              );
-            })}
+
+                {student.bio && <p className="text-slate-400 text-xs line-clamp-2">{student.bio}</p>}
+
+                {student.skills?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {student.skills.slice(0, 3).map(s => (
+                      <span key={s} className="badge badge-indigo text-[10px]">{s}</span>
+                    ))}
+                  </div>
+                )}
+
+                {tab === 'discover' && (
+                  <button onClick={() => handleConnect(student._id)} disabled={actionId === student._id}
+                    className="btn-primary py-2 text-xs w-full">
+                    {actionId === student._id
+                      ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      : <><UserPlus size={13} /> Connect</>
+                    }
+                  </button>
+                )}
+
+                {tab === 'pending' && (
+                  <div className="flex gap-2">
+                    <button onClick={() => handleAccept(student._id)} disabled={actionId === student._id}
+                      className="flex-1 btn-primary py-2 text-xs">
+                      <UserCheck size={13} /> Accept
+                    </button>
+                    <button onClick={() => handleReject(student._id)} disabled={actionId === student._id}
+                      className="flex-1 btn-danger py-2 text-xs">
+                      <UserX size={13} /> Reject
+                    </button>
+                  </div>
+                )}
+
+                {tab === 'connections' && (
+                  <button onClick={() => navigate(`/social/${student._id}`)} className="btn-secondary py-2 text-xs w-full">
+                    View Profile
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-          <Pagination currentPage={page} totalPages={pagination.totalPages || 1} onPageChange={setPage} />
+          {tab === 'discover' && <Pagination currentPage={page} totalPages={pagination.totalPages || 1} onPageChange={setPage} />}
         </>
       )}
     </div>

@@ -20,6 +20,7 @@ import LearningPaths from './pages/resources/LearningPaths';
 
 // Finance
 import FinanceTracker from './pages/finance/FinanceTracker';
+import FinanceAnalytics from './pages/finance/FinanceAnalytics';
 
 // Opportunities
 import Opportunities from './pages/opportunities/Opportunities';
@@ -54,6 +55,10 @@ import Connections from './pages/social/Connections';
 import MyProfile from './pages/profile/MyProfile';
 import EditProfile from './pages/profile/EditProfile';
 
+// New Pages
+import TaskManager from './pages/tasks/TaskManager';
+import AdminDashboard from './pages/admin/AdminDashboard';
+
 // Private Route Guard
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -83,11 +88,14 @@ const AppRoutes = () => {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
 
+        <Route path="tasks" element={<TaskManager />} />
+
         <Route path="resources" element={<ResourceHub />} />
         <Route path="resources/upload" element={<ResourceUpload />} />
         <Route path="resources/learning-paths" element={<LearningPaths />} />
 
         <Route path="finance" element={<FinanceTracker />} />
+        <Route path="finance/analytics" element={<FinanceAnalytics />} />
 
         <Route path="opportunities" element={<Opportunities />} />
 
@@ -108,12 +116,14 @@ const AppRoutes = () => {
         <Route path="campus/posts/:id" element={<CampusPost />} />
         <Route path="campus/create-post" element={<CreatePost />} />
 
+
         <Route path="social" element={<StudentSocial />} />
         <Route path="social/connections" element={<Connections />} />
         <Route path="social/:id" element={<StudentProfile />} />
 
         <Route path="profile" element={<MyProfile />} />
         <Route path="profile/edit" element={<EditProfile />} />
+        <Route path="admin" element={<AdminDashboard />} />
       </Route>
 
       {/* Catch-all */}
@@ -133,12 +143,12 @@ function App() {
             toastOptions={{
               duration: 4000,
               style: {
-                background: '#1C1C1C',
-                color: '#F4F4F4',
-                border: '1px solid #2E2E2E',
+                background: 'var(--toast-bg, #1e1e3c)',
+                color: 'var(--toast-color, #e2e8f0)',
+                border: '1px solid var(--toast-border, rgba(99,102,241,0.2))',
                 borderRadius: '12px',
                 fontSize: '14px',
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'Inter, sans-serif',
               },
             }}
           />

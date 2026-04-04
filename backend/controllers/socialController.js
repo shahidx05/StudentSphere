@@ -184,7 +184,7 @@ exports.getConnections = async (req, res, next) => {
   }
 };
 
-// @desc    Get all pending incoming connection requests
+// @desc    Get pending requests
 // @route   GET /api/social/requests
 exports.getPendingRequests = async (req, res, next) => {
   try {
@@ -201,3 +201,29 @@ exports.getPendingRequests = async (req, res, next) => {
     next(err);
   }
 };
+
+// @desc    Get my profile stats (connections, resources, opportunities, downloads)
+// @route   GET /api/social/profile/stats
+exports.getProfileStats = async (req, res, next) => {
+  try {
+    const ResourceItem = require('../models/ResourceItem');
+    const Opportunity = require('../models/Opportunity');
+    const Transaction = require('../models/Transaction');
+
+    const user = await User.findById(req.user._id).select('connections savedResources');
+
+    const connections = user.connections.filter((c) => c.status === 'accepted').length;
+
+    const resources = await ResourceItem.countDocuments({ uploadedBy: req.user._id });
+    const downloads = user.savedResources?.length || 0;
+    const opportunities = await Opportunity.countDocuments({ postedBy: req.user._id });
+
+    return res.json({
+      success: true,
+      data: { connections, resources, downloads, opportunities },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

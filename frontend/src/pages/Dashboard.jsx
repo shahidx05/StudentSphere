@@ -12,9 +12,32 @@ import { formatDate, formatRelative } from '../utils/formatDate';
 import { OPPORTUNITY_TYPES, POST_TYPES } from '../utils/constants';
 import {
   Wallet, TrendingUp, TrendingDown, Briefcase,
-  Download, Package, Search, Megaphone,
-  ArrowRight, Clock,
+  Download, Package, Search, CheckSquare,
+  ArrowRight, BookOpen, Megaphone,
 } from 'lucide-react';
+
+const getChartOptions = (isDark) => {
+  const gridColor = isDark ? 'rgba(99,102,241,0.05)' : 'rgba(99,102,241,0.08)';
+  const tickColor = isDark ? '#64748b' : '#94a3b8';
+  const legendColor = isDark ? '#94a3b8' : '#475569';
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: legendColor, font: { size: 11 }, usePointStyle: true, padding: 16 } },
+      tooltip: {
+        backgroundColor: isDark ? '#1e1e3c' : '#ffffff',
+        borderColor: 'rgba(99,102,241,0.3)', borderWidth: 1,
+        titleColor: isDark ? '#fff' : '#0f172a',
+        bodyColor: isDark ? '#94a3b8' : '#64748b',
+        padding: 12, cornerRadius: 8,
+      },
+    },
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 } } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 }, callback: v => `₹${(v/1000).toFixed(0)}k` } },
+    },
+  };
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -34,222 +57,240 @@ const Dashboard = () => {
 
   if (loading) return <PageSpinner />;
 
-  const { expenseSummary = {}, upcomingDeadlines = [], recentNotes = [],
-    recentMarketplaceItems = [], recentLostFound = [], campusAnnouncements = [] } = overview || {};
+  const isDark = !document.documentElement.classList.contains('light');
+  const chartOptions = getChartOptions(isDark);
 
-  // Bar chart data for expenses overview
+  const {
+    expenseSummary = {},
+    upcomingDeadlines = [],
+    recentNotes = [],
+    recentMarketplaceItems = [],
+    recentLostFound = [],
+    campusAnnouncements = [],
+    taskSummary = { pending: 0, 'in-progress': 0, completed: 0 },
+  } = overview || {};
+
   const barData = {
     labels: ['Income', 'Expenses', 'Balance'],
     datasets: [{
-      label: 'Monthly Summary (₹)',
-      data: [expenseSummary.income || 0, expenseSummary.expense || 0, expenseSummary.balance || 0],
-      backgroundColor: ['rgba(66, 190, 101, 0.7)', 'rgba(250, 77, 86, 0.7)', 'rgba(15, 98, 254, 0.7)'],
-      borderColor: ['#42BE65', '#FA4D56', '#0F62FE'],
-      borderWidth: 1,
-      borderRadius: 6,
+      label: 'Monthly (₹)',
+      data: [expenseSummary.income || 0, expenseSummary.expense || 0, Math.abs(expenseSummary.balance || 0)],
+      backgroundColor: ['rgba(34,197,94,0.6)', 'rgba(239,68,68,0.6)', 'rgba(99,102,241,0.6)'],
+      borderColor: ['#22c55e', '#ef4444', '#6366f1'],
+      borderWidth: 1, borderRadius: 6,
     }],
   };
 
-  const barOptions = {
-    responsive: true,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { grid: { color: '#2E2E2E' }, ticks: { color: '#6F6F6F' } },
-      y: { grid: { color: '#2E2E2E' }, ticks: { color: '#6F6F6F', callback: (v) => `₹${(v/1000).toFixed(0)}k` } },
-    },
-  };
-
-  const getOpportunityColor = (type) => OPPORTUNITY_TYPES.find(o => o.value === type)?.color || 'text-muted bg-muted/10';
-  const getPostColor = (type) => POST_TYPES.find(p => p.value === type)?.color || 'text-muted bg-muted/10';
+  const totalTasks = (taskSummary.pending || 0) + (taskSummary['in-progress'] || 0) + (taskSummary.completed || 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Welcome Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-text-primary">
-            {greeting}, {user?.name?.split(' ')[0]} 👋
-          </h1>
-          <p className="text-text-muted text-sm mt-0.5">
-            {formatDate(new Date(), 'dddd, MMMM D YYYY')} · Here's your overview
-          </p>
+    <div className="space-y-6 slide-up">
+      {/* Welcome Banner */}
+      <div className="glass-card p-6 relative overflow-hidden" style={{ transform: 'none' }}>
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.04) 50%, transparent 100%)' }} />
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-slate-400 text-sm mb-1">{formatDate(new Date(), 'MMM D, YYYY')}</p>
+            <h1 className="page-header text-2xl">
+              {greeting}, <span className="gradient-text">{user?.name?.split(' ')[0]}</span> 👋
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              {user?.department ? `${user.department}${user.year ? ` · Year ${user.year}` : ''}` : 'Welcome to StudentSphere'}
+            </p>
+          </div>
+          <button onClick={() => navigate('/tasks')} className="btn-primary w-fit">
+            <CheckSquare size={16} /> My Tasks
+          </button>
         </div>
       </div>
 
-      {/* Stats Row */}
+      {/* Finance Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <DashboardCard
-          title="Monthly Balance"
-          value={formatCurrency(expenseSummary.balance || 0)}
-          icon={Wallet}
-          color={(expenseSummary.balance || 0) >= 0 ? 'accent' : 'danger'}
-        />
-        <DashboardCard
-          title="Total Income"
-          value={formatCurrency(expenseSummary.income || 0)}
-          icon={TrendingUp}
-          color="accent"
-        />
-        <DashboardCard
-          title="Total Expenses"
-          value={formatCurrency(expenseSummary.expense || 0)}
-          icon={TrendingDown}
-          color="danger"
-        />
-        <DashboardCard
-          title="Active Opportunities"
-          value={upcomingDeadlines.length}
-          icon={Briefcase}
-          color="primary"
-          subtitle="Upcoming deadlines"
-        />
+        <DashboardCard title="Monthly Balance" value={formatCurrency(expenseSummary.balance || 0)}
+          icon={Wallet} color={(expenseSummary.balance || 0) >= 0 ? 'accent' : 'danger'} />
+        <DashboardCard title="Total Income" value={formatCurrency(expenseSummary.income || 0)}
+          icon={TrendingUp} color="accent" />
+        <DashboardCard title="Total Expenses" value={formatCurrency(expenseSummary.expense || 0)}
+          icon={TrendingDown} color="danger" />
+        <DashboardCard title="Opportunities" value={upcomingDeadlines.length}
+          icon={Briefcase} color="indigo" subtitle="Upcoming deadlines" />
       </div>
 
-      {/* Two-column layout */}
+      {/* Task Overview */}
+      <div className="glass-card p-5" style={{ transform: 'none' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="section-header"><CheckSquare size={18} className="text-indigo-400" /> Task Overview</h3>
+          <button onClick={() => navigate('/tasks')} className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors">
+            Manage <ArrowRight size={12} />
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: 'Total', value: totalTasks, color: 'text-white', bg: 'bg-white/5 border-white/8' },
+            { label: 'Pending', value: taskSummary.pending || 0, color: 'text-amber-400', bg: 'bg-amber-500/5 border-amber-500/15' },
+            { label: 'In Progress', value: taskSummary['in-progress'] || 0, color: 'text-indigo-400', bg: 'bg-indigo-500/5 border-indigo-500/15' },
+            { label: 'Done', value: taskSummary.completed || 0, color: 'text-emerald-400', bg: 'bg-emerald-500/5 border-emerald-500/15' },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} className={`text-center p-3.5 rounded-2xl border ${bg}`}>
+              <p className={`font-display text-2xl font-bold ${color}`}>{value}</p>
+              <p className="text-slate-500 text-xs mt-1">{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main 2-col grid */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left column */}
+        {/* Left */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Expense Summary Chart */}
-          <div className="card-base">
+          {/* Finance Chart */}
+          <div className="glass-card p-5" style={{ transform: 'none' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title mb-0">Monthly Finance Summary</h2>
-              <button onClick={() => navigate('/finance')} className="text-primary text-xs flex items-center gap-1 hover:text-primary-light transition-colors">
-                View Details <ArrowRight size={12} />
+              <h3 className="section-header"><Wallet size={18} className="text-indigo-400" /> Monthly Finance</h3>
+              <button onClick={() => navigate('/finance')} className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors">
+                View <ArrowRight size={12} />
               </button>
             </div>
-            <Bar data={barData} options={barOptions} height={80} />
+            <div style={{ height: 200 }}>
+              <Bar data={barData} options={chartOptions} />
+            </div>
           </div>
 
           {/* Upcoming Deadlines */}
-          <div className="card-base">
+          <div className="glass-card p-5" style={{ transform: 'none' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title mb-0">Upcoming Deadlines</h2>
-              <button onClick={() => navigate('/opportunities')} className="text-primary text-xs flex items-center gap-1 hover:text-primary-light transition-colors">
+              <h3 className="section-header"><Briefcase size={18} className="text-indigo-400" /> Upcoming Deadlines</h3>
+              <button onClick={() => navigate('/opportunities')} className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors">
                 View All <ArrowRight size={12} />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {upcomingDeadlines.length === 0 ? (
-                <p className="text-text-muted text-sm py-4 text-center">No upcoming deadlines</p>
-              ) : (
-                upcomingDeadlines.map((opp) => (
-                  <div key={opp._id} className="flex items-center gap-3 p-3 rounded-lg bg-surface-2 hover:bg-border/30 transition-all cursor-pointer"
-                    onClick={() => navigate('/opportunities')}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-text-primary text-sm font-medium truncate">{opp.title}</p>
-                      <p className="text-text-muted text-xs mt-0.5">{opp.organization} · Due {formatDate(opp.lastDate)}</p>
-                    </div>
-                    <span className={`badge-base text-xs ${getOpportunityColor(opp.type)}`}>{opp.type}</span>
-                    <CountdownTimer deadline={opp.lastDate} compact />
+                <p className="text-slate-500 text-sm py-4 text-center">No upcoming deadlines</p>
+              ) : upcomingDeadlines.map((opp) => (
+                <div key={opp._id} className="row-item cursor-pointer" onClick={() => navigate('/opportunities')}>
+                  <div className="icon-box bg-indigo-500/10 border border-indigo-500/20">
+                    <Briefcase size={15} className="text-indigo-400" />
                   </div>
-                ))
-              )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{opp.title}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{opp.organization} · Due {formatDate(opp.lastDate)}</p>
+                  </div>
+                  <CountdownTimer deadline={opp.lastDate} compact />
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Recent Marketplace */}
-          <div className="card-base">
+          {/* Marketplace */}
+          <div className="glass-card p-5" style={{ transform: 'none' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title mb-0">Marketplace Updates</h2>
-              <button onClick={() => navigate('/marketplace')} className="text-primary text-xs flex items-center gap-1 hover:text-primary-light">
+              <h3 className="section-header"><Package size={18} className="text-indigo-400" /> Marketplace</h3>
+              <button onClick={() => navigate('/marketplace')} className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors">
                 View All <ArrowRight size={12} />
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {recentMarketplaceItems.map((item) => (
-                <div key={item._id} className="bg-surface-2 rounded-lg p-3 hover:bg-border/30 transition-all cursor-pointer"
+            <div className="grid grid-cols-3 gap-3">
+              {recentMarketplaceItems.length === 0 ? (
+                <p className="text-slate-500 text-sm col-span-3 text-center py-4">No listings yet</p>
+              ) : recentMarketplaceItems.map((item) => (
+                <div key={item._id} className="rounded-xl overflow-hidden border border-indigo-500/10 bg-white/[0.02] hover:border-indigo-500/25 transition-all cursor-pointer group"
                   onClick={() => navigate(`/marketplace/${item._id}`)}>
-                  <div className="w-full h-24 rounded-lg bg-border mb-2 flex items-center justify-center overflow-hidden">
-                    {item.images?.[0] ? (
-                      <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <Package size={24} className="text-muted" />
-                    )}
+                  <div className="w-full h-24 bg-indigo-500/5 flex items-center justify-center overflow-hidden">
+                    {item.images?.[0]
+                      ? <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      : <Package size={24} className="text-slate-600" />
+                    }
                   </div>
-                  <p className="text-text-primary text-xs font-medium truncate">{item.title}</p>
-                  <p className={`text-xs font-semibold mt-0.5 ${item.isFree ? 'text-accent' : 'text-primary'}`}>
-                    {item.isFree ? 'FREE' : formatCurrency(item.price)}
-                  </p>
+                  <div className="p-2.5">
+                    <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                    <p className={`text-xs font-bold mt-0.5 ${item.isFree ? 'text-emerald-400' : 'text-indigo-400'}`}>
+                      {item.isFree ? 'FREE' : formatCurrency(item.price)}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Right column */}
+        {/* Right */}
         <div className="space-y-6">
-          {/* Recent Resources */}
-          <div className="card-base">
+          {/* Resources */}
+          <div className="glass-card p-5" style={{ transform: 'none' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title mb-0">Recent Resources</h2>
-              <button onClick={() => navigate('/resources')} className="text-primary text-xs flex items-center gap-1 hover:text-primary-light">
+              <h3 className="section-header"><BookOpen size={18} className="text-indigo-400" /> Resources</h3>
+              <button onClick={() => navigate('/resources')} className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors">
                 View All <ArrowRight size={12} />
               </button>
             </div>
-            <div className="space-y-2.5">
-              {recentNotes.length === 0 ? (
-                <p className="text-text-muted text-sm text-center py-4">No resources yet</p>
-              ) : (
-                recentNotes.map((note) => (
-                  <div key={note._id} className="flex items-center gap-3 p-2.5 rounded-lg bg-surface-2 hover:bg-border/30 transition-all cursor-pointer"
-                    onClick={() => navigate('/resources')}>
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Download size={14} className="text-primary" />
+            <div className="space-y-2">
+              {recentNotes.length === 0
+                ? <p className="text-slate-500 text-sm text-center py-4">No resources yet</p>
+                : recentNotes.map(note => (
+                  <div key={note._id} className="row-item cursor-pointer" onClick={() => navigate('/resources')}>
+                    <div className="icon-box bg-purple-500/10 border border-purple-500/20">
+                      <Download size={14} className="text-purple-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-text-primary text-xs font-medium truncate">{note.title}</p>
-                      <p className="text-text-muted text-[10px]">{note.subject} · {note.downloadCount} downloads</p>
+                      <p className="text-white text-xs font-medium truncate">{note.title}</p>
+                      <p className="text-slate-500 text-[10px]">{note.subject} · {note.downloadCount} downloads</p>
                     </div>
                   </div>
                 ))
-              )}
+              }
             </div>
           </div>
 
           {/* Lost & Found */}
-          <div className="card-base">
+          <div className="glass-card p-5" style={{ transform: 'none' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title mb-0">Lost & Found</h2>
-              <button onClick={() => navigate('/lostfound')} className="text-primary text-xs flex items-center gap-1 hover:text-primary-light">
+              <h3 className="section-header"><Search size={18} className="text-indigo-400" /> Lost & Found</h3>
+              <button onClick={() => navigate('/lostfound')} className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors">
                 View All <ArrowRight size={12} />
               </button>
             </div>
-            <div className="space-y-2.5">
-              {recentLostFound.map((item) => (
-                <div key={item._id} onClick={() => navigate(`/lostfound/${item._id}`)}
-                  className="flex items-center gap-3 p-2.5 rounded-lg bg-surface-2 hover:bg-border/30 transition-all cursor-pointer">
-                  <Search size={16} className={item.status === 'lost' ? 'text-danger' : 'text-accent'} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-text-primary text-xs font-medium truncate">{item.title}</p>
-                    <p className="text-text-muted text-[10px]">{formatRelative(item.createdAt)}</p>
+            <div className="space-y-2">
+              {recentLostFound.length === 0
+                ? <p className="text-slate-500 text-sm text-center py-4">No reports yet</p>
+                : recentLostFound.map(item => (
+                  <div key={item._id} className="row-item cursor-pointer" onClick={() => navigate(`/lostfound/${item._id}`)}>
+                    <Search size={16} className={item.status === 'lost' ? 'text-red-400' : 'text-emerald-400'} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                      <p className="text-slate-500 text-[10px]">{formatRelative(item.createdAt)}</p>
+                    </div>
+                    <Badge variant={item.status}>{item.status}</Badge>
                   </div>
-                  <Badge variant={item.status}>{item.status}</Badge>
-                </div>
-              ))}
+                ))
+              }
             </div>
           </div>
 
-          {/* Campus Announcements */}
-          <div className="card-base">
+          {/* Campus Updates */}
+          <div className="glass-card p-5" style={{ transform: 'none' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title mb-0">Campus Updates</h2>
-              <button onClick={() => navigate('/campus')} className="text-primary text-xs flex items-center gap-1 hover:text-primary-light">
+              <h3 className="section-header"><Megaphone size={18} className="text-indigo-400" /> Campus Updates</h3>
+              <button onClick={() => navigate('/campus')} className="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors">
                 View All <ArrowRight size={12} />
               </button>
             </div>
-            <div className="space-y-2.5">
-              {campusAnnouncements.map((post) => (
-                <div key={post._id} onClick={() => navigate(`/campus/posts/${post._id}`)}
-                  className="p-2.5 rounded-lg bg-surface-2 hover:bg-border/30 transition-all cursor-pointer">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`badge-base text-[10px] border ${getPostColor(post.type)}`}>{post.type}</span>
-                    <span className="text-text-muted text-[10px] flex items-center gap-1">
-                      <Clock size={10} /> {formatRelative(post.createdAt)}
-                    </span>
+            <div className="space-y-2">
+              {campusAnnouncements.length === 0
+                ? <p className="text-slate-500 text-sm text-center py-4">No announcements</p>
+                : campusAnnouncements.map(post => (
+                  <div key={post._id} className="row-item cursor-pointer" onClick={() => navigate(`/campus/posts/${post._id}`)}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <Badge variant={post.type}>{post.type}</Badge>
+                        <span className="text-slate-600 text-[10px]">{formatRelative(post.createdAt)}</span>
+                      </div>
+                      <p className="text-white text-xs font-medium truncate">{post.title}</p>
+                    </div>
                   </div>
-                  <p className="text-text-primary text-xs font-medium truncate">{post.title}</p>
-                </div>
-              ))}
+                ))
+              }
             </div>
           </div>
         </div>

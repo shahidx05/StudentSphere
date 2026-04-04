@@ -140,19 +140,23 @@ exports.getMonthlySummary = async (req, res, next) => {
 // @route   GET /api/finance/summary/yearly
 exports.getYearlySummary = async (req, res, next) => {
   try {
-    const year = parseInt(req.query.year) || new Date().getFullYear();
-    const start = new Date(year, 0, 1);
-    const end = new Date(year, 11, 31, 23, 59, 59);
+    const matchStage = { user: req.user._id };
+
+    // If year param given, filter to that year; otherwise return ALL transactions
+    if (req.query.year) {
+      const year = parseInt(req.query.year);
+      matchStage.date = { $gte: new Date(year, 0, 1), $lte: new Date(year, 11, 31, 23, 59, 59) };
+    }
 
     const result = await Transaction.aggregate([
-      { $match: { user: req.user._id, date: { $gte: start, $lte: end } } },
+      { $match: matchStage },
       {
         $group: {
-          _id: { month: { $month: '$date' }, type: '$type' },
+          _id: { month: { $month: '$date' }, type: '$type', year: { $year: '$date' } },
           total: { $sum: '$amount' },
         },
       },
-      { $sort: { '_id.month': 1 } },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
     ]);
 
     return res.json({ success: true, data: result });
@@ -160,6 +164,7 @@ exports.getYearlySummary = async (req, res, next) => {
     next(err);
   }
 };
+
 
 // @desc    Category breakdown (for pie chart)
 // @route   GET /api/finance/analytics/category

@@ -31,6 +31,10 @@ app.use('/api/marketplace', require('./routes/marketplaceRoutes'));
 app.use('/api/lostfound',   require('./routes/lostFoundRoutes'));
 app.use('/api/campus',      require('./routes/campusRoutes'));
 app.use('/api/social',      require('./routes/socialRoutes'));
+app.use('/api/tasks',       require('./routes/taskRoutes'));
+app.use('/api/campus-pass', require('./routes/campusPassRoutes'));
+app.use('/api/admin',       require('./routes/adminRoutes'));
+
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

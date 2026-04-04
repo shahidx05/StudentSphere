@@ -4,198 +4,211 @@ import useFetch from '../../hooks/useFetch';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import Badge from '../../components/ui/Badge';
-import SearchBar from '../../components/ui/SearchBar';
-import { PageSpinner } from '../../components/ui/Spinner';
-import EmptyState from '../../components/ui/EmptyState';
 import Pagination from '../../components/ui/Pagination';
+import EmptyState from '../../components/ui/EmptyState';
+import { PageSpinner } from '../../components/ui/Spinner';
 import { formatRelative } from '../../utils/formatDate';
-import { CLUB_CATEGORIES, POST_TYPES } from '../../utils/constants';
-import { Plus, Heart, MessageCircle, Users, Globe, Megaphone, Calendar } from 'lucide-react';
+import { Plus, Heart, MessageCircle, Share2, Megaphone, Users, Globe } from 'lucide-react';
+
+const TABS = [
+  { value: 'posts', label: 'Posts', icon: Globe },
+  { value: 'clubs', label: 'Clubs', icon: Users },
+  { value: 'announcements', label: 'Announcements', icon: Megaphone },
+];
+
+const POST_TYPE_BADGE = {
+  announcement: 'announcement', event: 'event',
+  recruitment: 'recruitment', general: 'general',
+};
+
+const EMOJI_ICONS = ['🎨','🏆','💻','🎵','📚','⚽','🌿','🚀'];
 
 const CampusConnect = () => {
   const navigate = useNavigate();
-  const [clubCategory, setClubCategory] = useState('');
+  const [tab, setTab] = useState('posts');
+  const [page, setPage] = useState(1);
+  const [postPage, setPostPage] = useState(1);
   const [postType, setPostType] = useState('');
   const [search, setSearch] = useState('');
-  const [postPage, setPostPage] = useState(1);
+  const [clubCategory, setClubCategory] = useState('');
+  const [likingId, setLikingId] = useState(null);
 
-  const { data: clubsData, loading: clubsLoading } = useFetch(
-    `/api/campus/clubs?${clubCategory ? `category=${clubCategory}` : ''}`
+  const { data: postsData, loading: postsLoading, refetch: refetchPosts } = useFetch(
+    tab === 'posts' ? `/api/campus/posts?${postType ? `type=${postType}&` : ''}${search ? `search=${search}&` : ''}page=${postPage}&limit=10` : null
   );
-  const clubs = clubsData?.data || [];
+  const { data: clubsData, loading: clubsLoading } = useFetch(
+    tab === 'clubs' ? `/api/campus/clubs${clubCategory ? `?category=${clubCategory}` : ''}` : null
+  );
+  const { data: annData, loading: annLoading } = useFetch(
+    tab === 'announcements' ? `/api/campus/posts?type=announcement&page=${page}&limit=10` : null
+  );
 
-  const postParams = new URLSearchParams({
-    ...(postType && { type: postType }),
-    ...(search && { search }),
-    page: postPage, limit: 10,
-  }).toString();
-
-  const { data: postsData, loading: postsLoading, refetch: refetchPosts } = useFetch(`/api/campus/posts?${postParams}`);
   const posts = postsData?.data || [];
-  const pagination = postsData?.pagination || {};
+  const clubs = clubsData?.data || [];
+  const announcements = annData?.data || [];
+  const pagination = postsData?.pagination || annData?.pagination || {};
 
-  const handleLike = async (postId, isLiked) => {
-    // Optimistic: we just call API and rely on refetch
+  const handleLike = async (postId) => {
+    setLikingId(postId);
     try {
       await api.post(`/api/campus/posts/${postId}/like`);
       refetchPosts();
-    } catch { toast.error('Failed to toggle like'); }
+    } catch { toast.error('Failed'); }
+    finally { setLikingId(null); }
   };
 
-  const getPostTypeColor = (type) => POST_TYPES.find(p => p.value === type)?.color || 'text-muted bg-muted/10';
-  const getClubCatColor = (cat) => {
-    const map = { technical: 'primary', cultural: 'purple', sports: 'accent', social: 'warning', other: 'default' };
-    return map[cat] || 'default';
+  const handleShare = (post) => {
+    if (navigator.share) {
+      navigator.share({ title: post.title, text: post.content?.slice(0, 100) }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied!');
+    }
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 slide-up">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="page-header">Campus Connect</h1>
-          <p className="text-text-muted text-sm">Clubs, events, announcements & campus life</p>
+          <p className="text-sm text-slate-400 mt-1">News, clubs, events and announcements</p>
         </div>
-        <button onClick={() => navigate('/campus/create-post')} className="btn-primary">
-          <Plus size={16} /> Create Post
+        <button onClick={() => navigate('/campus/create-post')} className="btn-primary w-fit">
+          <Plus size={15} /> Create Post
         </button>
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Clubs Panel */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="section-title mb-0">Clubs</h2>
-          </div>
+      {/* Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-white/[0.03] rounded-xl w-fit border border-white/5">
+        {TABS.map(({ value, label, icon: Icon }) => (
+          <button key={value} onClick={() => { setTab(value); setPage(1); }}
+            className={`tab-btn flex items-center gap-2 ${tab === value ? 'active' : ''}`}>
+            <Icon size={14} /> {label}
+          </button>
+        ))}
+      </div>
 
-          {/* Club Category Tabs */}
-          <div className="flex flex-wrap gap-1">
-            <button onClick={() => setClubCategory('')}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${!clubCategory ? 'bg-primary text-white' : 'bg-surface-2 text-text-muted hover:text-text-primary'}`}>
-              All
-            </button>
-            {CLUB_CATEGORIES.map(({ value, label }) => (
-              <button key={value} onClick={() => setClubCategory(value)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all capitalize ${
-                  clubCategory === value ? 'bg-primary text-white' : 'bg-surface-2 text-text-muted hover:text-text-primary'
-                }`}>{label}</button>
+      {/* Posts Tab */}
+      {tab === 'posts' && (
+        postsLoading ? <PageSpinner /> : posts.length === 0 ? (
+          <EmptyState icon="default" title="No posts yet" description="Be the first to share something with campus!"
+            action={<button onClick={() => navigate('/campus/create-post')} className="btn-primary"><Plus size={15} /> Create Post</button>} />
+        ) : (
+          <div className="space-y-4">
+            {posts.map(post => (
+              <div key={post._id} className="glass-card p-5" style={{ transform: 'none' }}>
+                {/* Post header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                      {post.author?.name?.[0]?.toUpperCase() || 'S'}
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-semibold">{post.author?.name}</p>
+                      <p className="text-slate-500 text-xs">{formatRelative(post.createdAt)}</p>
+                    </div>
+                  </div>
+                  <Badge variant={POST_TYPE_BADGE[post.type] || 'general'}>{post.type}</Badge>
+                </div>
+
+                {/* Content */}
+                <h3 className="font-display text-base font-semibold text-white mb-2 cursor-pointer hover:text-indigo-400 transition-colors"
+                  onClick={() => navigate(`/campus/posts/${post._id}`)}>
+                  {post.title}
+                </h3>
+                {post.content && (
+                  <p className="text-slate-400 text-sm line-clamp-3 mb-3">{post.content}</p>
+                )}
+                {post.image && (
+                  <img src={post.image} alt={post.title}
+                    className="w-full rounded-xl mb-3 max-h-60 object-cover" />
+                )}
+
+                {/* Tags */}
+                {post.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {post.tags.map(t => <span key={t} className="text-[10px] text-indigo-400/70 bg-indigo-500/8 px-2 py-0.5 rounded">#{t}</span>)}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-4 pt-3 border-t border-indigo-500/10">
+                  <button onClick={() => handleLike(post._id)} disabled={likingId === post._id}
+                    className="flex items-center gap-1.5 text-slate-400 hover:text-red-400 transition-colors text-xs">
+                    <Heart size={15} className={post.isLiked ? 'fill-red-400 text-red-400' : ''} />
+                    {post.likesCount || post.likes?.length || 0}
+                  </button>
+                  <button onClick={() => navigate(`/campus/posts/${post._id}`)}
+                    className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-400 transition-colors text-xs">
+                    <MessageCircle size={15} />
+                    {post.commentsCount || post.comments?.length || 0}
+                  </button>
+                  <button onClick={() => handleShare(post)}
+                    className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-400 transition-colors text-xs ml-auto">
+                    <Share2 size={15} /> Share
+                  </button>
+                </div>
+              </div>
             ))}
+            <Pagination currentPage={page} totalPages={pagination.totalPages || 1} onPageChange={setPage} />
           </div>
+        )
+      )}
 
-          {clubsLoading ? <PageSpinner /> : clubs.length === 0 ? (
-            <EmptyState title="No clubs yet" description="Check back soon." />
-          ) : (
-            <div className="space-y-2.5">
-              {clubs.map((club) => (
-                <div key={club._id} onClick={() => navigate(`/campus/clubs/${club._id}`)}
-                  className="card-base card-glow cursor-pointer flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {club.logo ? (
-                      <img src={club.logo} alt={club.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Globe size={18} className="text-primary" />
-                    )}
+      {/* Clubs Tab */}
+      {tab === 'clubs' && (
+        clubsLoading ? <PageSpinner /> : clubs.length === 0 ? (
+          <EmptyState icon="users" title="No clubs yet" description="Clubs will appear here once they are created." />
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {clubs.map((club, idx) => (
+              <div key={club._id} className="glass-card p-5 cursor-pointer"
+                onClick={() => navigate(`/campus/clubs/${club._id}`)}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="icon-box-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl flex-shrink-0">
+                    {club.image
+                      ? <img src={club.image} alt={club.name} className="w-full h-full object-cover rounded-xl" />
+                      : <span>{EMOJI_ICONS[idx % EMOJI_ICONS.length]}</span>
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-text-primary text-sm font-semibold truncate">{club.name}</p>
-                      {club.recruitmentOpen && (
-                        <span className="text-[9px] bg-accent/10 text-accent border border-accent/20 px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap">
-                          Hiring
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge variant={getClubCatColor(club.category)} size="xs">{club.category}</Badge>
-                      <span className="text-text-muted text-[10px] flex items-center gap-1">
-                        <Users size={10} /> {club.members?.length || 0}
-                      </span>
-                    </div>
+                    <h3 className="font-display font-semibold text-white text-sm">{club.name}</h3>
+                    <Badge variant={club.category || 'technical'}>{club.category}</Badge>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Posts Feed */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="section-title mb-0">Campus Feed</h2>
-          </div>
-
-          {/* Post Type Filter */}
-          <div className="flex gap-1 flex-wrap">
-            {[{ value: '', label: 'All' }, ...POST_TYPES].map(({ value, label }) => (
-              <button key={value} onClick={() => { setPostType(value); setPostPage(1); }}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  postType === value ? 'bg-primary text-white' : 'bg-surface-2 text-text-muted hover:text-text-primary'
-                }`}>{label}</button>
+                <p className="text-slate-400 text-xs line-clamp-2 mb-3">{club.description}</p>
+                <div className="flex items-center justify-between text-[10px] text-slate-500">
+                  <span className="flex items-center gap-1"><Users size={10} /> {club.members?.length || 0} members</span>
+                  <button className="btn-primary py-1 px-2.5 text-xs">View</button>
+                </div>
+              </div>
             ))}
           </div>
+        )
+      )}
 
-          <SearchBar value={search} onChange={(v) => { setSearch(v); setPostPage(1); }} placeholder="Search posts..." />
-
-          {postsLoading ? <PageSpinner /> : posts.length === 0 ? (
-            <EmptyState icon="default" title="No posts yet" description="Be the first to share something with campus!"
-              action={<button onClick={() => navigate('/campus/create-post')} className="btn-primary">Create Post</button>} />
-          ) : (
-            <div className="space-y-3">
-              {posts.map((post) => (
-                <div key={post._id} className="card-base card-glow">
-                  {/* Post Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      {post.club?.logo ? (
-                        <img src={post.club.logo} alt={post.club.name} className="w-7 h-7 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Globe size={13} className="text-primary" />
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-text-primary text-xs font-semibold">{post.club?.name || post.postedBy?.name}</p>
-                        <p className="text-text-muted text-[10px]">{formatRelative(post.createdAt)}</p>
-                      </div>
-                    </div>
-                    <span className={`badge-base text-[10px] border ${getPostTypeColor(post.type)}`}>{post.type}</span>
-                  </div>
-
-                  {/* Post Content */}
-                  <h3 className="text-text-primary font-semibold text-sm mb-1 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => navigate(`/campus/posts/${post._id}`)}>
-                    {post.title}
-                  </h3>
-                  <p className="text-text-muted text-xs line-clamp-2">{post.content}</p>
-
-                  {/* Event Info */}
-                  {post.eventDate && (
-                    <div className="flex items-center gap-1.5 text-primary text-xs mt-2">
-                      <Calendar size={12} />
-                      <span>{formatRelative(post.eventDate)}</span>
-                      {post.eventVenue && <span>· {post.eventVenue}</span>}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
-                    <button onClick={() => handleLike(post._id)}
-                      className="flex items-center gap-1.5 text-text-muted hover:text-danger transition-colors text-xs">
-                      <Heart size={14} />
-                      <span>{post.likes?.length || 0}</span>
-                    </button>
-                    <button onClick={() => navigate(`/campus/posts/${post._id}`)}
-                      className="flex items-center gap-1.5 text-text-muted hover:text-primary transition-colors text-xs">
-                      <MessageCircle size={14} />
-                      <span>{post.comments?.length || 0}</span>
-                    </button>
-                  </div>
+      {/* Announcements Tab */}
+      {tab === 'announcements' && (
+        annLoading ? <PageSpinner /> : announcements.length === 0 ? (
+          <EmptyState icon="default" title="No announcements" description="Check back for important campus updates." />
+        ) : (
+          <div className="space-y-3">
+            {announcements.map(ann => (
+              <div key={ann._id} className="row-item cursor-pointer" onClick={() => navigate(`/campus/posts/${ann._id}`)}>
+                <div className="icon-box bg-indigo-500/10 border border-indigo-500/20">
+                  <Megaphone size={16} className="text-indigo-400" />
                 </div>
-              ))}
-              <Pagination currentPage={postPage} totalPages={pagination.totalPages || 1} onPageChange={setPostPage} />
-            </div>
-          )}
-        </div>
-      </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold truncate">{ann.title}</p>
+                  <p className="text-slate-500 text-xs mt-0.5">{ann.author?.name} · {formatRelative(ann.createdAt)}</p>
+                </div>
+                <Badge variant="announcement">Announcement</Badge>
+              </div>
+            ))}
+            <Pagination currentPage={page} totalPages={pagination.totalPages || 1} onPageChange={setPage} />
+          </div>
+        )
+      )}
     </div>
   );
 };

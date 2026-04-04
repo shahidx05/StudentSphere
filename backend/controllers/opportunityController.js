@@ -145,3 +145,57 @@ exports.opportunityValidation = [
   body('organization').notEmpty().withMessage('Organization is required.'),
   body('lastDate').isISO8601().withMessage('Valid lastDate is required.'),
 ];
+
+// @desc    Toggle save/unsave an opportunity
+// @route   POST /api/opportunities/:id/save
+exports.toggleSaveOpportunity = async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const oppId = req.params.id;
+
+    const opportunity = await Opportunity.findById(oppId);
+    if (!opportunity) return res.status(404).json({ success: false, message: 'Opportunity not found.' });
+
+    const user = await User.findById(req.user._id);
+    const alreadySaved = user.savedOpportunities.some((id) => id.toString() === oppId);
+
+    if (alreadySaved) {
+      user.savedOpportunities = user.savedOpportunities.filter((id) => id.toString() !== oppId);
+    } else {
+      user.savedOpportunities.push(oppId);
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: alreadySaved ? 'Opportunity unsaved.' : 'Opportunity saved.',
+      data: { saved: !alreadySaved },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get saved opportunities for logged-in user
+// @route   GET /api/opportunities/saved/me
+exports.getSavedOpportunities = async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).populate({
+      path: 'savedOpportunities',
+      populate: { path: 'postedBy', select: 'name' },
+    });
+
+    const now = new Date();
+    const enriched = user.savedOpportunities.map((op) => {
+      const obj = op.toObject();
+      obj.daysLeft = Math.ceil((new Date(op.lastDate) - now) / (1000 * 60 * 60 * 24));
+      return obj;
+    });
+
+    return res.json({ success: true, data: enriched });
+  } catch (err) {
+    next(err);
+  }
+};

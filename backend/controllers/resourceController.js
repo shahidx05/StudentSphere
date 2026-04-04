@@ -221,3 +221,50 @@ exports.resourceValidation = [
     .isIn(['notes', 'pyq', 'department_notes', 'gate', 'course_resource', 'learning_path'])
     .withMessage('Invalid resource type.'),
 ];
+
+// @desc    Toggle bookmark/save a resource
+// @route   POST /api/resources/:id/bookmark
+exports.toggleBookmark = async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const resourceId = req.params.id;
+
+    const resource = await ResourceItem.findById(resourceId);
+    if (!resource) return res.status(404).json({ success: false, message: 'Resource not found.' });
+
+    const user = await User.findById(req.user._id);
+    const alreadySaved = user.savedResources.some((id) => id.toString() === resourceId);
+
+    if (alreadySaved) {
+      user.savedResources = user.savedResources.filter((id) => id.toString() !== resourceId);
+    } else {
+      user.savedResources.push(resourceId);
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: alreadySaved ? 'Bookmark removed.' : 'Resource bookmarked.',
+      data: { bookmarked: !alreadySaved },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get all bookmarked resources for logged-in user
+// @route   GET /api/resources/bookmarks/me
+exports.getBookmarkedResources = async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).populate({
+      path: 'savedResources',
+      populate: { path: 'uploadedBy', select: 'name profilePhoto' },
+    });
+
+    return res.json({ success: true, data: user.savedResources });
+  } catch (err) {
+    next(err);
+  }
+};

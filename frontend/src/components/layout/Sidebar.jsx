@@ -1,117 +1,146 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, Wallet, Briefcase, MapPin,
-  ShoppingBag, Search, Users, Globe, User, LogOut,
-  ChevronRight, GraduationCap, X,
+  ShoppingBag, Search, Users, Globe, LogOut, User,
+  GraduationCap, ChevronLeft, ChevronRight, CheckSquare, X, Shield,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/resources', icon: BookOpen, label: 'Resource Hub' },
-  { path: '/finance', icon: Wallet, label: 'Finance Tracker' },
-  { path: '/opportunities', icon: Briefcase, label: 'Opportunities' },
-  { path: '/local', icon: MapPin, label: 'Local Navigator' },
-  { path: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
-  { path: '/lostfound', icon: Search, label: 'Lost & Found' },
-  { path: '/campus', icon: Globe, label: 'Campus Connect' },
-  { path: '/social', icon: Users, label: 'Student Social' },
+  { path: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/tasks',        icon: CheckSquare,     label: 'My Tasks' },
+  { path: '/resources',    icon: BookOpen,        label: 'Resource Hub' },
+  { path: '/finance',      icon: Wallet,          label: 'Finance' },
+  { path: '/opportunities',icon: Briefcase,       label: 'Opportunities' },
+  { path: '/local',        icon: MapPin,          label: 'Local Navigator' },
+  { path: '/marketplace',  icon: ShoppingBag,     label: 'Marketplace' },
+  { path: '/lostfound',    icon: Search,          label: 'Lost & Found' },
+  { path: '/campus',       icon: Globe,           label: 'Campus Connect' },
+  { path: '/social',       icon: Users,           label: 'Student Social' },
 ];
 
-const Sidebar = ({ isOpen, onClose }) => {
+const ADMIN_NAV = { path: '/admin', icon: Shield, label: 'Admin Panel' };
+
+export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
 
-  const initials = user?.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || 'SS';
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'SS';
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={onClose} />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 bg-secondary border-r border-border z-40 flex flex-col transition-transform duration-300 ease-in-out
+        className={`sidebar fixed left-0 top-0 h-full z-40 flex flex-col
+          transition-all duration-300 ease-in-out
+          ${collapsed ? 'w-[72px]' : 'w-64'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-5 py-5 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <GraduationCap size={18} className="text-white" />
-            </div>
-            <span className="font-display font-bold text-text-primary text-lg tracking-tight">
-              Student<span className="text-primary">Sphere</span>
-            </span>
+        <div className="flex items-center gap-3 px-4 py-5 border-b border-indigo-500/10">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
+            <GraduationCap size={20} className="text-white" />
           </div>
-          <button onClick={onClose} className="lg:hidden text-muted hover:text-text-primary">
+          {!collapsed && (
+            <div className="fade-in overflow-hidden">
+              <h1 className="text-base font-bold gradient-text leading-tight font-display">StudentSphere</h1>
+              <p className="text-[10px] text-slate-500 tracking-wider uppercase">Student Ecosystem</p>
+            </div>
+          )}
+          <button onClick={onClose} className="lg:hidden ml-auto text-slate-400 hover:text-white transition-colors">
             <X size={18} />
           </button>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          <p className="text-[10px] text-muted uppercase tracking-widest font-medium px-3 mb-3">Menu</p>
+          {!collapsed && (
+            <p className="text-[10px] text-slate-600 uppercase tracking-widest font-medium px-3 mb-3">Navigation</p>
+          )}
           {NAV_ITEMS.map(({ path, icon: Icon, label }) => (
             <NavLink
               key={path}
               to={path}
               onClick={() => onClose?.()}
-              className={({ isActive }) => isActive ? 'sidebar-link-active' : 'sidebar-link'}
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center !gap-0 !px-0' : ''}`
+              }
             >
-              <Icon size={18} />
-              <span className="flex-1">{label}</span>
-              <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Icon size={19} className="flex-shrink-0" />
+              {!collapsed && <span>{label}</span>}
             </NavLink>
           ))}
+
+          {/* Admin-only link */}
+          {user?.role === 'admin' && (
+            <NavLink to={ADMIN_NAV.path} onClick={() => onClose?.()}
+              title={collapsed ? ADMIN_NAV.label : undefined}
+              className={({ isActive }) =>
+                `sidebar-link mt-2 border border-red-500/20 ${isActive ? 'bg-red-500/15 text-red-400' : 'text-red-400/70 hover:text-red-400 hover:bg-red-500/10'} ${collapsed ? 'justify-center !gap-0 !px-0' : ''}`
+              }>
+              <Shield size={19} className="flex-shrink-0" />
+              {!collapsed && <span>{ADMIN_NAV.label}</span>}
+            </NavLink>
+          )}
         </nav>
 
-        {/* User Profile Footer */}
-        <div className="p-3 border-t border-border">
-          <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer group">
-            {user?.profilePhoto ? (
-              <img src={user.profilePhoto} alt={user.name} className="w-8 h-8 rounded-full object-cover ring-2 ring-border" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-                <span className="text-primary text-xs font-semibold">{initials}</span>
+        {/* Collapse toggle */}
+        <div className="px-3 py-2 border-t border-indigo-500/10">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="sidebar-link w-full justify-center text-slate-500 hover:text-white"
+          >
+            {collapsed
+              ? <ChevronRight size={17} />
+              : <><ChevronLeft size={17} /><span className="text-xs">Collapse</span></>
+            }
+          </button>
+        </div>
+
+        {/* User Card */}
+        {!collapsed && (
+          <div className="px-4 py-4 border-t border-indigo-500/10 fade-in">
+            <div className="flex items-center gap-3 mb-3">
+              {user?.profilePhoto ? (
+                <img src={user.profilePhoto} alt={user.name}
+                  className="w-9 h-9 rounded-full object-cover ring-2 ring-indigo-500/30" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                  {initials}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{user?.name || 'Student'}</p>
+                <p className="text-[11px] text-slate-500 truncate">
+                  {user?.department || 'Student'}
+                  {user?.year ? ` · Yr ${user.year}` : ''}
+                </p>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-text-primary text-xs font-semibold truncate">{user?.name || 'Student'}</p>
-              <p className="text-text-muted text-[10px] truncate">{user?.department || 'Student'}</p>
+              <div className="pulse-dot" />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { navigate('/profile'); onClose?.(); }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-medium transition-all"
+              >
+                <User size={13} /> Profile
+              </button>
+              <button
+                onClick={logout}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-medium transition-all"
+              >
+                <LogOut size={13} /> Logout
+              </button>
             </div>
           </div>
-
-          <div className="flex gap-1 mt-1">
-            <button
-              onClick={() => { navigate('/profile'); onClose?.(); }}
-              className="flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-white/5 text-xs transition-all"
-            >
-              <User size={14} />
-              Profile
-            </button>
-            <button
-              onClick={logout}
-              className="flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg text-danger/70 hover:text-danger hover:bg-danger/5 text-xs transition-all"
-            >
-              <LogOut size={14} />
-              Logout
-            </button>
-          </div>
-        </div>
+        )}
       </aside>
     </>
   );
-};
-
-export default Sidebar;
+}

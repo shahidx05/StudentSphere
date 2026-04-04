@@ -1,44 +1,30 @@
-import { TrendingUp, TrendingDown } from 'lucide-react';
-
-const DashboardCard = ({ title, value, icon: Icon, color = 'primary', trend, subtitle }) => {
-  const colorMap = {
-    primary: 'text-primary bg-primary/10 border-primary/20',
-    accent: 'text-accent bg-accent/10 border-accent/20',
-    danger: 'text-danger bg-danger/10 border-danger/20',
-    warning: 'text-warning bg-warning/10 border-warning/20',
-    muted: 'text-muted bg-muted/10 border-muted/20',
+export default function DashboardCard({ title, value, icon: Icon, color = 'indigo', subtitle, trend }) {
+  const colors = {
+    indigo:  { box: 'bg-indigo-500/10 border border-indigo-500/20', icon: 'text-indigo-400' },
+    primary: { box: 'bg-indigo-500/10 border border-indigo-500/20', icon: 'text-indigo-400' },
+    accent:  { box: 'bg-emerald-500/10 border border-emerald-500/20', icon: 'text-emerald-400' },
+    danger:  { box: 'bg-red-500/10 border border-red-500/20', icon: 'text-red-400' },
+    warning: { box: 'bg-amber-500/10 border border-amber-500/20', icon: 'text-amber-400' },
+    purple:  { box: 'bg-purple-500/10 border border-purple-500/20', icon: 'text-purple-400' },
   };
-
-  const iconColor = {
-    primary: 'text-primary',
-    accent: 'text-accent',
-    danger: 'text-danger',
-    warning: 'text-warning',
-    muted: 'text-muted',
-  };
-
+  const c = colors[color] || colors.indigo;
   return (
-    <div className="card-base card-glow animate-fade-in">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-text-muted text-xs font-medium uppercase tracking-wider mb-1">{title}</p>
-          <p className="text-2xl font-display font-bold text-text-primary mt-1">{value}</p>
-          {subtitle && <p className="text-text-muted text-xs mt-1">{subtitle}</p>}
-          {trend !== undefined && (
-            <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend >= 0 ? 'text-accent' : 'text-danger'}`}>
-              {trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              <span>{Math.abs(trend)}% vs last month</span>
-            </div>
-          )}
+    <div className="stat-card flex items-start gap-4 group cursor-default">
+      {Icon && (
+        <div className={`icon-box-lg ${c.box} group-hover:scale-110 transition-transform duration-300`}>
+          <Icon size={22} className={c.icon} />
         </div>
-        {Icon && (
-          <div className={`p-2.5 rounded-lg border ${colorMap[color]}`}>
-            <Icon size={20} className={iconColor[color]} />
-          </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{title}</p>
+        <p className="text-2xl font-bold text-white font-display">{value}</p>
+        {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+        {trend !== undefined && (
+          <p className={`text-xs mt-1 font-medium ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% vs last month
+          </p>
         )}
       </div>
     </div>
   );
-};
-
-export default DashboardCard;
+}

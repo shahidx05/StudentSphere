@@ -31,6 +31,8 @@ const userSchema = new mongoose.Schema(
     profilePhoto: { type: String, default: '' },
     bio: { type: String, maxlength: 500, default: '' },
     connections: [connectionSchema],
+    savedResources: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ResourceItem' }],
+    savedOpportunities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Opportunity' }],
     notifications: [
       {
         message: String,

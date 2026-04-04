@@ -1,52 +1,34 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = isOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-  };
+  const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      {/* Modal Card */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 fade-in" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className={`relative w-full ${sizes[size]} bg-surface border border-border rounded-2xl shadow-card animate-slide-up`}
-        onClick={(e) => e.stopPropagation()}
+        className={`relative w-full ${sizes[size]} bg-[#12122a] border border-indigo-500/20 rounded-2xl shadow-2xl slide-up`}
+        onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h3 className="font-display text-lg font-semibold text-text-primary">{title}</h3>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-indigo-500/10">
+          <h3 className="font-display text-base font-semibold text-white">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted hover:text-text-primary hover:bg-surface-2 transition-all"
+            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
-        {/* Content */}
-        <div className="p-5">{children}</div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   );
-};
-
-export default Modal;
+}

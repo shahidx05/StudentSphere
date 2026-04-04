@@ -41,7 +41,7 @@ const FileUpload = ({ multiple = false, accept = 'image/*,application/pdf', onCh
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-          dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-border-light hover:bg-surface-2'
+          dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-indigo-500/40 hover:bg-white/5'
         }`}
       >
         <Upload size={24} className="mx-auto text-muted mb-2" />

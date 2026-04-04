@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const lostFoundItemSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
-    description: { type: String, required: true },
+    description: { type: String, trim: true, default: '' },
     status: { type: String, enum: ['lost', 'found'], required: true },
     images: [{ type: String }],
     locationLost: { type: String, trim: true },
