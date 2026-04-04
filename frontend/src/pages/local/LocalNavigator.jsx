@@ -11,7 +11,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import { PageSpinner } from '../../components/ui/Spinner';
 import Modal from '../../components/ui/Modal';
 import { LOCAL_SERVICE_TYPES } from '../../utils/constants';
-import { MapPin, Phone, Star, Plus, Trash2, Edit3, Navigation } from 'lucide-react';
+import { MapPin, Phone, Star, Plus, Trash2, Edit3, Navigation, Home, UtensilsCrossed, Building2, Wrench, BookOpen, LocateFixed, Loader2 } from 'lucide-react';
 
 // ─── Helper: extract lat/lng from service ────────────────────────────────────
 const getCoords = (svc) => {
@@ -29,8 +29,16 @@ const ServiceMap = ({ services, selected, onSelect, pickMode, onPick }) => {
 
   // Boot the map once
   useEffect(() => {
-    if (!mapRef.current || mapInst.current) return;
+    if (!mapRef.current) return;
+
+    let cancelled = false;
+
     import('leaflet').then((mod) => {
+      // Guard: component unmounted OR container already has a Leaflet instance
+      if (cancelled || !mapRef.current) return;
+      if (mapRef.current._leaflet_id)   return;  // already initialised
+      if (mapInst.current)              return;
+
       const L = mod.default;
       leafRef.current = L;
 
@@ -54,9 +62,11 @@ const ServiceMap = ({ services, selected, onSelect, pickMode, onPick }) => {
     });
 
     return () => {
+      cancelled = true;
       if (mapInst.current) { mapInst.current.remove(); mapInst.current = null; }
     };
   }, []);
+
 
   // Update markers when services change
   useEffect(() => {
@@ -129,8 +139,8 @@ const ServiceMap = ({ services, selected, onSelect, pickMode, onPick }) => {
     <div className="relative w-full h-full">
       <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
       {pickMode && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg pointer-events-none">
-          📍 Click on the map to set location
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg pointer-events-none flex items-center gap-1.5">
+          <MapPin size={11} /> Click on the map to set location
         </div>
       )}
     </div>
@@ -146,12 +156,63 @@ const ServiceForm = ({ initial, onSave, onCancel, onPickRequest, pickedCoords })
     cost: '', contactNumber: '', facilities: [],
     latitude: '', longitude: '',
   });
+  const [gpsLoading, setGpsLoading] = useState(false);
 
+  // Apply map-picked coords
   useEffect(() => {
     if (pickedCoords) {
       setForm(f => ({ ...f, latitude: pickedCoords.lat.toFixed(6), longitude: pickedCoords.lng.toFixed(6) }));
     }
   }, [pickedCoords]);
+
+  // GPS auto-detect: fills address + lat/lng via Nominatim
+  const detectGPS = async () => {
+    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const { latitude, longitude } = coords;
+        try {
+          const res  = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`
+          );
+          const data = await res.json();
+          const a = data.address || {};
+
+          // Line 1: building / house + road / street
+          const street = [
+            a.house_number,
+            a.road || a.pedestrian || a.footway || a.path,
+            a.neighbourhood || a.suburb || a.quarter,
+          ].filter(Boolean).join(', ');
+
+          // Line 2: city, state, pin
+          const cityName  = a.city || a.town || a.municipality || a.village || a.county || '';
+          const stateName = a.state || '';
+          const pincode   = a.postcode || '';
+          const cityLine  = [cityName, stateName, pincode].filter(Boolean).join(', ');
+
+          // Combine — use display_name as fallback
+          const address = [street, cityLine].filter(Boolean).join('\n')
+            || data.display_name
+            || 'Current location';
+
+          setForm(f => ({
+            ...f,
+            address,
+            latitude:  latitude.toFixed(6),
+            longitude: longitude.toFixed(6),
+          }));
+          toast.success('Location detected!');
+        } catch {
+          setForm(f => ({ ...f, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
+          toast('Coordinates set. Address lookup failed.', { icon: 'ℹ️' });
+        } finally { setGpsLoading(false); }
+      },
+      (err) => { toast.error('Location denied: ' + err.message); setGpsLoading(false); },
+      { timeout: 10000 }
+    );
+  };
 
   const toggle = (f) => setForm(prev => ({
     ...prev,
@@ -160,10 +221,7 @@ const ServiceForm = ({ initial, onSave, onCancel, onPickRequest, pickedCoords })
       : [...prev.facilities, f],
   }));
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(form);
-  };
+  const handleSubmit = (e) => { e.preventDefault(); onSave(form); };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
@@ -187,11 +245,28 @@ const ServiceForm = ({ initial, onSave, onCancel, onPickRequest, pickedCoords })
           <input value={form.cost} onChange={e => setForm({ ...form, cost: e.target.value })}
             className="input-field" placeholder="5000" />
         </div>
+
+        {/* Address with GPS button */}
         <div className="col-span-2">
-          <label className="text-xs text-slate-400 mb-1 block">Address *</label>
-          <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })}
-            required className="input-field" placeholder="Karol Bagh, New Delhi" />
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-slate-400">Address *</label>
+            <button type="button" onClick={detectGPS} disabled={gpsLoading}
+              className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 text-[11px] font-medium transition-colors disabled:opacity-50">
+              {gpsLoading
+                ? <><Loader2 size={11} className="animate-spin" /> Detecting...</>
+                : <><LocateFixed size={11} /> Detect my location</>}
+            </button>
+          </div>
+          <textarea
+            value={form.address}
+            onChange={e => setForm({ ...form, address: e.target.value })}
+            required
+            rows={3}
+            className="input-field resize-none"
+            placeholder={`Street / Road, Area\nCity, State, Pincode`}
+          />
         </div>
+
         <div className="col-span-2">
           <label className="text-xs text-slate-400 mb-1 block">Description</label>
           <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
@@ -221,16 +296,16 @@ const ServiceForm = ({ initial, onSave, onCancel, onPickRequest, pickedCoords })
 
       {/* Coordinates */}
       <div>
-        <label className="text-xs text-slate-400 mb-2 block">Location Coordinates</label>
+        <label className="text-xs text-slate-400 mb-2 block">Coordinates (auto-filled by GPS or pick on map)</label>
         <div className="grid grid-cols-2 gap-2">
           <input value={form.latitude} onChange={e => setForm({ ...form, latitude: e.target.value })}
-            className="input-field" placeholder="Latitude (e.g. 28.6139)" />
+            className="input-field" placeholder="Latitude" />
           <input value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })}
-            className="input-field" placeholder="Longitude (e.g. 77.2090)" />
+            className="input-field" placeholder="Longitude" />
         </div>
         <button type="button" onClick={onPickRequest}
-          className="mt-2 flex items-center gap-2 text-indigo-400 text-xs hover:text-indigo-300 transition-colors">
-          <Navigation size={13} /> Click on map to pick location
+          className="mt-2 flex items-center gap-1.5 text-indigo-400 text-xs hover:text-indigo-300 transition-colors">
+          <Navigation size={12} /> Or click on map to place pin
         </button>
       </div>
 
@@ -245,16 +320,13 @@ const ServiceForm = ({ initial, onSave, onCancel, onPickRequest, pickedCoords })
 };
 
 // ─── TYPE ICON ────────────────────────────────────────────────────────────────
-const TYPE_ICONS = {
-  hostel: '🏠', mess: '🍽️', pg: '🏢', hardware: '🔧', stationery: '📚', other: '📍',
-};
-const TYPE_COLORS = {
-  hostel: 'text-indigo-400 bg-indigo-500/10',
-  mess:   'text-amber-400 bg-amber-500/10',
-  pg:     'text-purple-400 bg-purple-500/10',
-  hardware: 'text-orange-400 bg-orange-500/10',
-  stationery: 'text-blue-400 bg-blue-500/10',
-  other:  'text-slate-400 bg-slate-500/10',
+const TYPE_ICON_MAP = {
+  hostel:     { icon: Home,            color: 'text-indigo-400 bg-indigo-500/10'  },
+  mess:       { icon: UtensilsCrossed,  color: 'text-amber-400 bg-amber-500/10'   },
+  pg:         { icon: Building2,        color: 'text-purple-400 bg-purple-500/10' },
+  hardware:   { icon: Wrench,           color: 'text-orange-400 bg-orange-500/10' },
+  stationery: { icon: BookOpen,         color: 'text-blue-400 bg-blue-500/10'     },
+  other:      { icon: MapPin,           color: 'text-slate-400 bg-slate-500/10'   },
 };
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
@@ -262,6 +334,7 @@ const LocalNavigator = () => {
   const navigate   = useNavigate();
   const { user }   = useAuth();
   const isAdmin    = user?.role === 'admin';
+  const canAdd     = !!user; // all logged-in users can add
 
   const [tab, setTab]           = useState('');
   const [search, setSearch]     = useState('');
@@ -350,7 +423,7 @@ const LocalNavigator = () => {
           <h1 className="page-header">Local Navigator</h1>
           <p className="text-sm text-slate-400 mt-1">Hostels, mess, PG &amp; shops near campus</p>
         </div>
-        {isAdmin && (
+        {canAdd && (
           <button onClick={openAdd} className="btn-primary">
             <Plus size={16} /> Add Location
           </button>
@@ -389,10 +462,15 @@ const LocalNavigator = () => {
                         : 'border-indigo-500/5 hover:bg-white/[0.03]'
                     }`}>
                     <div className="flex items-start gap-3">
-                      {/* Type icon */}
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${TYPE_COLORS[svc.type] || TYPE_COLORS.other}`}>
-                        {TYPE_ICONS[svc.type] || '📍'}
-                      </div>
+                      {/* Type icon — Lucide */}
+                      {(() => {
+                        const { icon: Icon, color } = TYPE_ICON_MAP[svc.type] || TYPE_ICON_MAP.other;
+                        return (
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
+                            <Icon size={18} />
+                          </div>
+                        );
+                      })()}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -454,6 +532,7 @@ const LocalNavigator = () => {
                             className="text-indigo-400 hover:text-indigo-300 text-xs font-medium transition-colors">
                             View Details →
                           </button>
+                          {/* Edit/Delete — admin only; Add is open to all */}
                           {isAdmin && (
                             <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={(e) => openEdit(svc, e)}
@@ -488,7 +567,9 @@ const LocalNavigator = () => {
               <span className="text-slate-400 text-xs ml-2">— {selected.name}</span>
             )}
             {pickMode && (
-              <span className="ml-auto text-amber-400 text-xs animate-pulse">📍 Click map to place pin</span>
+              <span className="ml-auto text-amber-400 text-xs animate-pulse flex items-center gap-1">
+                <MapPin size={11} /> Click map to place pin
+              </span>
             )}
           </div>
           <div className="flex-1">
@@ -510,15 +591,17 @@ const LocalNavigator = () => {
         title={editItem ? `Edit: ${editItem.name}` : 'Add New Location'}
         size="lg"
       >
-        {/* Map picker strip */}
-        <div className="mb-4 rounded-xl overflow-hidden border border-indigo-500/20" style={{ height: 160 }}>
-          <ServiceMap
-            services={editItem ? [{ ...editItem, location: { coordinates: [parseFloat(editItem.longitude) || 0, parseFloat(editItem.latitude) || 0] } }] : []}
-            selected={null}
-            pickMode={pickMode}
-            onPick={handlePick}
-          />
-        </div>
+        {/* Map picker strip — only rendered when modal is open */}
+        {showForm && (
+          <div className="mb-4 rounded-xl overflow-hidden border border-indigo-500/20" style={{ height: 160 }}>
+            <ServiceMap
+              services={editItem ? [{ ...editItem, location: { coordinates: [parseFloat(editItem.longitude) || 0, parseFloat(editItem.latitude) || 0] } }] : []}
+              selected={null}
+              pickMode={pickMode}
+              onPick={handlePick}
+            />
+          </div>
+        )}
         <ServiceForm
           initial={editItem}
           pickedCoords={pickedCoords}
