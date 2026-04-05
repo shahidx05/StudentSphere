@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, Menu, Moon, Sun, ChevronDown, Settings, User, LogOut } from 'lucide-react';
+import { Menu, Moon, Sun, ChevronDown, Settings, User, LogOut } from 'lucide-react';
 
 const ROUTE_TITLES = {
   '/dashboard': 'Dashboard', '/tasks': 'My Tasks',
@@ -88,18 +88,6 @@ export default function Topbar({ onMenuClick }) {
           {isDark ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
-        {/* Notifications */}
-        <button
-          onClick={() => navigate('/profile')}
-          className="relative w-9 h-9 rounded-xl bg-white/5 border border-indigo-500/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-        >
-          <Bell size={17} />
-          {notifCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-              {notifCount > 9 ? '9+' : notifCount}
-            </span>
-          )}
-        </button>
 
         {/* Avatar dropdown */}
         <div className="relative" data-dropdown>

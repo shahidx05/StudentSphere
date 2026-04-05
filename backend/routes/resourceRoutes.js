@@ -16,6 +16,19 @@ router.get('/learning-paths/:slug', getLearningPath);
 // Bookmarks (must come before /:id to avoid route conflicts)
 router.get('/bookmarks/me', protect, getBookmarkedResources);
 
+// My resources (must come before /:id)
+router.get('/mine', protect, async (req, res) => {
+  try {
+    const Resource = require('../models/Resource');
+    const items = await Resource.find({ uploadedBy: req.user._id })
+      .sort({ createdAt: -1 })
+      .select('title subject type downloads bookmarks createdAt fileUrl');
+    res.json({ success: true, data: items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/', getResources);
 router.post('/', protect, uploadSingle('file'), resourceValidation, validate, createResource);
 router.get('/:id', getResource);
