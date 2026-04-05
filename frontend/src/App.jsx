@@ -6,6 +6,9 @@ import { NotificationProvider } from './context/NotificationContext';
 // Layout
 import Layout from './components/layout/Layout';
 
+// Landing
+import Landing from './pages/Landing';
+
 // Auth Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -75,17 +78,17 @@ const PrivateRoute = ({ children }) => {
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Public */}
+      {/* Public — Landing is the homepage */}
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Protected */}
-      <Route path="/" element={
+      {/* Protected — pathless layout wrapper (no path conflict with /) */}
+      <Route element={
         <PrivateRoute>
           <Layout />
         </PrivateRoute>
       }>
-        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
 
         <Route path="tasks" element={<TaskManager />} />
@@ -116,7 +119,6 @@ const AppRoutes = () => {
         <Route path="campus/posts/:id" element={<CampusPost />} />
         <Route path="campus/create-post" element={<CreatePost />} />
 
-
         <Route path="social" element={<StudentSocial />} />
         <Route path="social/connections" element={<Connections />} />
         <Route path="social/:id" element={<StudentProfile />} />
@@ -126,8 +128,8 @@ const AppRoutes = () => {
         <Route path="admin" element={<AdminDashboard />} />
       </Route>
 
-      {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Catch-all → landing for guests, dashboard for auth */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
