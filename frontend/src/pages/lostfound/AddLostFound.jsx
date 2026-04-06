@@ -17,9 +17,10 @@ Return ONLY a valid JSON object with NO markdown, NO backticks, NO explanation:
 }`;
 
 const MODELS = [
-  'openrouter/auto',
+  'google/gemini-2.0-flash-exp:free',
   'google/gemini-2.5-pro-exp-03-25:free',
-  'google/gemini-2.0-flash-thinking-exp:free',
+  'meta-llama/llama-4-scout:free',
+  'openrouter/auto',
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -78,18 +79,33 @@ const AddLostFound = () => {
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  // ── Image picker (for AI + submission) ────────────────────────────────────
+  // ── Image picker (for AI + submission) ────────────────────────────────
   const handleAiImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setAiImage(file);
     setAiPreview(URL.createObjectURL(file));
     setFilled(false);
+    // Add to images list for upload (avoid duplicate by name)
     setImages(prev => prev.find(f => f.name === file.name) ? prev : [file, ...prev]);
+  };
+
+  // When the secondary FileUpload picks more images, MERGE with existing (don't replace)
+  const handleExtraImages = (files) => {
+    const arr = Array.isArray(files) ? files : (files ? [files] : []);
+    setImages(prev => {
+      const existing = prev.filter(p => !arr.find(a => a.name === p.name));
+      return [...existing, ...arr];
+    });
   };
 
   // ── Auto Fill — combines AI + GPS + user email ─────────────────────────────
   const handleAutoFill = async () => {
+    const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+    if (!apiKey) {
+      toast.error('AI key not configured. Check VITE_OPENROUTER_API_KEY in .env');
+      return;
+    }
     setFilling(true);
     const results = { title: '', description: '', locationLost: '', contactInfo: '' };
 
@@ -97,24 +113,26 @@ const AddLostFound = () => {
     if (aiImage) {
       try {
         const base64 = await fileToBase64(aiImage);
-        let parsed   = null;
+        const mimeType = aiImage.type || 'image/jpeg';
+        let parsed = null;
 
         for (const model of MODELS) {
           try {
+            console.log(`[AI] Trying model: ${model}`);
             const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:5173',
-                'X-Title': 'StudentSphere',
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'StudentSphere Lost & Found',
               },
               body: JSON.stringify({
                 model,
                 messages: [{
                   role: 'user',
                   content: [
-                    { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
+                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
                     { type: 'text', text: PROMPT },
                   ],
                 }],
@@ -123,23 +141,31 @@ const AddLostFound = () => {
             });
 
             const data = await response.json();
-            if (!response.ok) continue;
+            console.log(`[AI] ${model} response:`, data);
+
+            if (!response.ok || data.error) {
+              console.warn(`[AI] ${model} failed:`, data.error?.message || response.status);
+              continue;
+            }
 
             const content = data.choices?.[0]?.message?.content;
-            if (!content) continue;
+            if (!content) { console.warn(`[AI] ${model}: no content`); continue; }
 
             const cleaned = content.replace(/```json\s*|```/g, '').trim();
             const match   = cleaned.match(/\{[\s\S]*\}/);
-            if (!match) continue;
+            if (!match) { console.warn(`[AI] ${model}: no JSON in response`); continue; }
 
             parsed = JSON.parse(match[0]);
+            console.log(`[AI] Success with ${model}:`, parsed);
             break;
-          } catch { continue; }
+          } catch (e) { console.warn(`[AI] ${model} threw:`, e); continue; }
         }
 
         if (parsed) {
           results.title       = parsed.title       || '';
           results.description = parsed.description || '';
+        } else {
+          console.warn('AI: no parseable JSON from any model');
         }
       } catch (err) {
         console.warn('AI error:', err);
@@ -182,19 +208,31 @@ const AddLostFound = () => {
     }
   };
 
-  // ── Submit (unchanged logic) ───────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.contactInfo) { toast.error('Title and contact info are required'); return; }
+
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
     images.forEach(img => fd.append('images', img));
+
+    // Debug: confirm files are in FormData
+    console.log('[Submit] images state:', images.length, images.map(f => f.name));
+    for (const [key, val] of fd.entries()) {
+      if (val instanceof File) console.log(`  fd[${key}]:`, val.name, val.size, 'bytes');
+      else console.log(`  fd[${key}]:`, val);
+    }
+
     setLoading(true);
     try {
-      await api.post('/api/lostfound', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // Do NOT set Content-Type manually — browser sets multipart/form-data with boundary automatically
+      const res = await api.post('/api/lostfound', fd);
+      console.log('[Submit] response:', res.data);
       toast.success('Post created!');
       navigate('/lostfound');
     } catch (err) {
+      console.error('[Submit] error:', err.response?.data || err.message);
       toast.error(err.response?.data?.message || 'Failed');
     } finally { setLoading(false); }
   };
@@ -357,7 +395,7 @@ const AddLostFound = () => {
             placeholder="https://..." className="input-base" />
         </div>
 
-        <FileUpload label="Additional Photos (optional)" multiple accept="image/*" onChange={setImages} />
+        <FileUpload label="Additional Photos (optional)" multiple accept="image/*" onChange={handleExtraImages} />
 
         <div className="flex gap-3 pt-2">
           <button type="button" onClick={() => navigate('/lostfound')} className="btn-secondary flex-1">

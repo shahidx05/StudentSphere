@@ -15,6 +15,8 @@ router.get('/me', protect, getMe);
 router.put('/update-profile', protect, updateProfile);
 router.put('/update-skills', protect, updateSkills);
 router.put('/change-password', protect, changePassword);
+
+// Upload photo — uploadSingle handles multer + Cloudinary + errors internally
 router.post('/upload-photo', protect, uploadSingle('photo'), uploadPhoto);
 
 module.exports = router;

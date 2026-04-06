@@ -1,5 +1,6 @@
 const { body } = require('express-validator');
 const ResourceItem = require('../models/ResourceItem');
+const { getFileUrl } = require('../middleware/uploadMiddleware');
 
 // Static learning paths data
 const LEARNING_PATHS = [
@@ -113,7 +114,7 @@ exports.getResources = async (req, res, next) => {
 exports.createResource = async (req, res, next) => {
   try {
     const { title, description, type, subject, department, year, tags } = req.body;
-    const fileUrl = req.file ? (req.file.path || `/uploads/${req.file.filename}`) : undefined;
+    const fileUrl = getFileUrl(req.file);
 
     const resource = await ResourceItem.create({
       title,

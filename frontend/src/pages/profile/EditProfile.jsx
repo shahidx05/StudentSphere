@@ -4,14 +4,20 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { PageSpinner } from '../../components/ui/Spinner';
-import { User, Mail, Building, BookOpen, Hash, FileText, Save, ArrowLeft, Camera } from 'lucide-react';
+import { User, Mail, Building, BookOpen, Hash, FileText, Save, ArrowLeft, Camera, Lock, Eye, EyeOff } from 'lucide-react';
 import { DEPARTMENTS, BRANCHES, YEARS } from '../../utils/constants';
+import { resolvePhoto } from '../../utils/resolvePhoto';
 
 const EditProfile = () => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [showPwSection, setShowPwSection] = useState(false);
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirm: '' });
+  const [pwLoading, setPwLoading] = useState(false);
   const [form, setForm] = useState({
     name: '', bio: '', department: '', branch: '', year: '',
     college: '', skills: '', interests: '',
@@ -43,7 +49,7 @@ const EditProfile = () => {
         interests: form.interests.split(',').map(s => s.trim()).filter(Boolean),
         year: form.year ? Number(form.year) : undefined,
       };
-      const { data } = await api.put('/api/auth/profile', payload);
+      const { data } = await api.put('/api/auth/update-profile', payload);
       if (data.success) {
         updateUser?.(data.data);
         toast.success('Profile updated!');
@@ -62,10 +68,37 @@ const EditProfile = () => {
     fd.append('photo', file);
     setPhotoUploading(true);
     try {
-      const { data } = await api.post('/api/auth/profile/photo', fd);
-      if (data.success) { updateUser?.(data.data); toast.success('Photo updated!'); }
-    } catch { toast.error('Photo upload failed'); }
+      const { data } = await api.post('/api/auth/upload-photo', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (data.success) {
+        updateUser?.(data.data);
+        toast.success('Photo updated!');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Photo upload failed');
+    }
     finally { setPhotoUploading(false); }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (pwForm.newPassword.length < 6) { toast.error('New password must be at least 6 characters'); return; }
+    if (pwForm.newPassword !== pwForm.confirm) { toast.error('Passwords do not match'); return; }
+    setPwLoading(true);
+    try {
+      const { data } = await api.put('/api/auth/change-password', {
+        oldPassword: pwForm.oldPassword,
+        newPassword: pwForm.newPassword,
+      });
+      if (data.success) {
+        toast.success('Password changed successfully!');
+        setPwForm({ oldPassword: '', newPassword: '', confirm: '' });
+        setShowPwSection(false);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Password change failed');
+    } finally { setPwLoading(false); }
   };
 
   const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'SS';
@@ -95,7 +128,7 @@ const EditProfile = () => {
       <div className="glass-card p-6 flex items-center gap-5" style={{ transform: 'none' }}>
         <div className="relative flex-shrink-0">
           {user?.profilePhoto ? (
-            <img src={user.profilePhoto} alt={user.name} className="w-20 h-20 rounded-2xl object-cover ring-2 ring-indigo-500/30" />
+            <img src={resolvePhoto(user.profilePhoto)} alt={user.name} className="w-20 h-20 rounded-2xl object-cover ring-2 ring-indigo-500/30" />
           ) : (
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
               {initials}
@@ -175,6 +208,73 @@ const EditProfile = () => {
             : <><Save size={15} /> Save Changes</>}
         </button>
       </form>
+
+      {/* ── Change Password ── */}
+      <div className="glass-card p-6" style={{ transform: 'none' }}>
+        <button
+          type="button"
+          onClick={() => setShowPwSection(v => !v)}
+          className="flex items-center justify-between w-full"
+        >
+          <span className="flex items-center gap-2 font-semibold text-white text-sm">
+            <Lock size={15} className="text-indigo-400" /> Change Password
+          </span>
+          <span className="text-slate-500 text-xs">{showPwSection ? 'Cancel' : 'Update'}</span>
+        </button>
+
+        {showPwSection && (
+          <form onSubmit={handleChangePassword} className="space-y-3 mt-4 pt-4 border-t border-indigo-500/10">
+            {/* Old password */}
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Current Password</label>
+              <div className="relative">
+                <input
+                  type={showOld ? 'text' : 'password'}
+                  value={pwForm.oldPassword}
+                  onChange={e => setPwForm(f => ({ ...f, oldPassword: e.target.value }))}
+                  className="input-field pr-10" placeholder="Enter current password" required
+                />
+                <button type="button" onClick={() => setShowOld(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  {showOld ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            {/* New password */}
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">New Password</label>
+              <div className="relative">
+                <input
+                  type={showNew ? 'text' : 'password'}
+                  value={pwForm.newPassword}
+                  onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+                  className="input-field pr-10" placeholder="Min. 6 characters" required
+                />
+                <button type="button" onClick={() => setShowNew(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            {/* Confirm */}
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Confirm New Password</label>
+              <input
+                type="password"
+                value={pwForm.confirm}
+                onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                className="input-field" placeholder="Repeat new password" required
+              />
+            </div>
+            <button type="submit" disabled={pwLoading} className="btn-primary w-full">
+              {pwLoading
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <><Lock size={14} /> Update Password</>
+              }
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 };

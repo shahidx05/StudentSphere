@@ -8,7 +8,7 @@ import Pagination from '../../components/ui/Pagination';
 import EmptyState from '../../components/ui/EmptyState';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { formatRelative } from '../../utils/formatDate';
-import { Plus, Heart, MessageCircle, Share2, Megaphone, Users, Globe } from 'lucide-react';
+import { Plus, Heart, MessageCircle, Share2, Megaphone, Users, Globe, Code2, Music2, Trophy, BookOpen, Leaf, Rocket, Palette, ChevronRight } from 'lucide-react';
 
 const TABS = [
   { value: 'posts', label: 'Posts', icon: Globe },
@@ -21,7 +21,16 @@ const POST_TYPE_BADGE = {
   recruitment: 'recruitment', general: 'general',
 };
 
-const EMOJI_ICONS = ['🎨','🏆','💻','🎵','📚','⚽','🌿','🚀'];
+const CLUB_ICONS = {
+  technical:   Code2,
+  cultural:    Music2,
+  sports:      Trophy,
+  academic:    BookOpen,
+  environment: Leaf,
+  entrepreneurship: Rocket,
+  arts:        Palette,
+  default:     Users,
+};
 
 const CampusConnect = () => {
   const navigate = useNavigate();
@@ -79,13 +88,27 @@ const CampusConnect = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-white/[0.03] rounded-xl w-fit border border-white/5">
-        {TABS.map(({ value, label, icon: Icon }) => (
-          <button key={value} onClick={() => { setTab(value); setPage(1); }}
-            className={`tab-btn flex items-center gap-2 ${tab === value ? 'active' : ''}`}>
-            <Icon size={14} /> {label}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-1 p-1 bg-white/[0.03] rounded-xl w-fit border border-white/5">
+          {TABS.map(({ value, label, icon: Icon }) => (
+            <button key={value} onClick={() => { setTab(value); setPage(1); }}
+              className={`tab-btn flex items-center gap-1.5 ${tab === value ? 'active' : ''}`}>
+              <Icon size={13} /> {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Post type filter — only on Posts tab */}
+        {tab === 'posts' && (
+          <div className="flex items-center gap-1 p-1 bg-white/[0.03] rounded-xl border border-white/5">
+            {['', 'announcement', 'event', 'recruitment', 'general'].map(v => (
+              <button key={v} onClick={() => setPostType(v)}
+                className={`tab-btn text-xs py-1 px-2.5 capitalize ${postType === v ? 'active' : ''}`}>
+                {v || 'All'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Posts Tab */}
@@ -165,10 +188,13 @@ const CampusConnect = () => {
               <div key={club._id} className="glass-card p-5 cursor-pointer"
                 onClick={() => navigate(`/campus/clubs/${club._id}`)}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="icon-box-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl flex-shrink-0">
+                  <div className="icon-box-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex-shrink-0 overflow-hidden">
                     {club.image
                       ? <img src={club.image} alt={club.name} className="w-full h-full object-cover rounded-xl" />
-                      : <span>{EMOJI_ICONS[idx % EMOJI_ICONS.length]}</span>
+                      : (() => {
+                          const Icon = CLUB_ICONS[club.category] || CLUB_ICONS.default;
+                          return <Icon size={22} className="text-white" />;
+                        })()
                     }
                   </div>
                   <div className="flex-1 min-w-0">
@@ -179,7 +205,7 @@ const CampusConnect = () => {
                 <p className="text-slate-400 text-xs line-clamp-2 mb-3">{club.description}</p>
                 <div className="flex items-center justify-between text-[10px] text-slate-500">
                   <span className="flex items-center gap-1"><Users size={10} /> {club.members?.length || 0} members</span>
-                  <button className="btn-primary py-1 px-2.5 text-xs">View</button>
+                  <span className="flex items-center gap-1 text-indigo-400 font-medium">View <ChevronRight size={11} /></span>
                 </div>
               </div>
             ))}

@@ -8,6 +8,7 @@ import {
   Edit3, BookOpen, Briefcase, Users, Download,
   MapPin, FileText, ExternalLink, Plus, Clock,
 } from 'lucide-react';
+import { resolvePhoto } from '../../utils/resolvePhoto';
 
 const TYPE_COLOR = {
   pdf:        'text-red-400 bg-red-500/10 border-red-500/20',
@@ -41,7 +42,7 @@ const MyProfile = () => {
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
           {/* Avatar */}
           {user?.profilePhoto ? (
-            <img src={user.profilePhoto} alt={user.name}
+            <img src={resolvePhoto(user.profilePhoto)} alt={user.name}
               className="w-20 h-20 rounded-2xl object-cover ring-4 ring-indigo-500/30 flex-shrink-0" />
           ) : (
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white flex-shrink-0 shadow-xl shadow-indigo-500/25">

@@ -1,5 +1,6 @@
 const { body } = require('express-validator');
 const LostFoundItem = require('../models/LostFoundItem');
+const { getFilesUrls } = require('../middleware/uploadMiddleware');
 
 // @desc    Get all lost/found posts
 // @route   GET /api/lostfound
@@ -44,7 +45,7 @@ exports.getItems = async (req, res, next) => {
 exports.createItem = async (req, res, next) => {
   try {
     const { title, description, status, locationLost, contactInfo, externalLink } = req.body;
-    const images = req.files ? req.files.map((f) => `/uploads/${f.filename}`) : [];
+    const images = getFilesUrls(req.files);
 
     const item = await LostFoundItem.create({
       title, description, status, locationLost, contactInfo, externalLink, images,
@@ -84,7 +85,7 @@ exports.updateItem = async (req, res, next) => {
     Object.assign(item, { title, description, status, locationLost, contactInfo, externalLink });
 
     if (req.files && req.files.length) {
-      item.images = req.files.map((f) => `/uploads/${f.filename}`);
+      item.images = getFilesUrls(req.files);
     }
 
     await item.save();

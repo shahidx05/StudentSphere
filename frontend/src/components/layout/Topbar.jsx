@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Menu, Moon, Sun, ChevronDown, Settings, User, LogOut } from 'lucide-react';
+import { resolvePhoto } from '../../utils/resolvePhoto';
 
 const ROUTE_TITLES = {
   '/dashboard': 'Dashboard', '/tasks': 'My Tasks',
@@ -96,7 +97,7 @@ export default function Topbar({ onMenuClick }) {
             className="flex items-center gap-2 py-1.5 px-2.5 rounded-xl bg-white/5 border border-indigo-500/10 hover:bg-white/10 transition-all"
           >
             {user?.profilePhoto ? (
-              <img src={user.profilePhoto} alt={user.name} className="w-7 h-7 rounded-full object-cover" />
+              <img src={resolvePhoto(user.profilePhoto)} alt={user.name} className="w-7 h-7 rounded-full object-cover" />
             ) : (
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">
                 {initials}

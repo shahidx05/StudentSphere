@@ -5,12 +5,18 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor — attach JWT
+// Request interceptor — attach JWT + fix Content-Type for FormData
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ss_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // IMPORTANT: When sending FormData (file uploads), remove the default
+    // Content-Type: application/json so the browser can set
+    // multipart/form-data with the correct boundary automatically.
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
     }
     return config;
   },

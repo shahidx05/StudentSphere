@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { PageSpinner } from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import { UserCheck, UserX, Clock } from 'lucide-react';
+import { resolvePhoto } from '../../utils/resolvePhoto';
 
 const Connections = () => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const Connections = () => {
         <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer"
           onClick={() => navigate(`/social/${student._id}`)}>
           {student.profilePhoto ? (
-            <img src={student.profilePhoto} alt={student.name} className="w-full h-full object-cover" />
+            <img src={resolvePhoto(student.profilePhoto)} alt={student.name} className="w-full h-full object-cover" />
           ) : (
             <span className="text-primary font-bold text-xs">{initials}</span>
           )}
@@ -105,7 +106,8 @@ const Connections = () => {
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {requests.map((req) => {
-              const student = req.user;
+              // Backend returns the sender as a populated user object directly
+              const student = req.user || req;
               return (
                 <StudentCard key={student?._id} student={student || {}} actions={
                   <>

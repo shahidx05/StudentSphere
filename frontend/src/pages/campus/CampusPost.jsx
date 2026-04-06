@@ -18,17 +18,27 @@ const CampusPost = () => {
   const post = data?.data;
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [liked, setLiked] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isLiked = post?.likes?.some(u => (u._id || u) === user?._id);
   const getTypeColor = (type) => POST_TYPES.find(p => p.value === type)?.color || 'text-muted bg-muted/10';
 
   const handleLike = async () => {
-    const prev = isLiked;
     try {
       await api.post(`/api/campus/posts/${id}/like`);
       refetch();
     } catch { toast.error('Failed'); }
+  };
+
+  const handleDeletePost = async () => {
+    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/campus/posts/${id}`);
+      toast.success('Post deleted.');
+      navigate('/campus');
+    } catch { toast.error('Failed to delete post'); }
+    finally { setDeleting(false); }
   };
 
   const handleComment = async (e) => {
@@ -112,6 +122,14 @@ const CampusPost = () => {
             <MessageCircle size={16} />
             {post.comments?.length || 0} comments
           </div>
+          {/* Delete post — owner or admin only */}
+          {(post.author?._id === user?._id || user?.role === 'admin') && (
+            <button onClick={handleDeletePost} disabled={deleting}
+              className="ml-auto flex items-center gap-1.5 text-text-muted hover:text-danger transition-colors text-sm">
+              <Trash2 size={15} />
+              {deleting ? 'Deleting…' : 'Delete Post'}
+            </button>
+          )}
         </div>
       </div>
 

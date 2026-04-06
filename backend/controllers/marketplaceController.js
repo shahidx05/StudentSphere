@@ -1,5 +1,6 @@
 const { body } = require('express-validator');
 const MarketplaceItem = require('../models/MarketplaceItem');
+const { getFilesUrls } = require('../middleware/uploadMiddleware');
 
 // @desc    Get all marketplace listings
 // @route   GET /api/marketplace
@@ -49,7 +50,7 @@ exports.getListings = async (req, res, next) => {
 exports.createListing = async (req, res, next) => {
   try {
     const { title, description, category, price, isFree, condition, section, shopAddress, contactInfo } = req.body;
-    const images = req.files ? req.files.map((f) => f.path || `/uploads/${f.filename}`) : [];
+    const images = getFilesUrls(req.files);
 
     const item = await MarketplaceItem.create({
       title, description, category, price, isFree, condition, section,
@@ -90,7 +91,7 @@ exports.updateListing = async (req, res, next) => {
     Object.assign(item, { title, description, category, price, isFree, condition, section, shopAddress, contactInfo });
 
     if (req.files && req.files.length) {
-      item.images = req.files.map((f) => f.path || `/uploads/${f.filename}`);
+      item.images = getFilesUrls(req.files);
     }
 
     await item.save();

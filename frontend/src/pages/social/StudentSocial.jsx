@@ -9,6 +9,7 @@ import Pagination from '../../components/ui/Pagination';
 import EmptyState from '../../components/ui/EmptyState';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { UserPlus, UserCheck, UserX, Users } from 'lucide-react';
+import { resolvePhoto } from '../../utils/resolvePhoto';
 
 const TABS = [
   { value: 'discover', label: 'Discover' },
@@ -25,8 +26,8 @@ const StudentSocial = () => {
 
   const params = new URLSearchParams({ ...(search && { search }), page, limit: 12 }).toString();
   const { data, loading, refetch } = useFetch(
-    tab === 'discover' ? `/api/social/discover?${params}`
-    : tab === 'pending' ? '/api/social/requests/pending'
+    tab === 'discover' ? `/api/social/students?${params}`
+    : tab === 'pending' ? '/api/social/requests'
     : '/api/social/connections'
   );
 
@@ -74,9 +75,6 @@ const StudentSocial = () => {
           <h1 className="page-header">Student Social</h1>
           <p className="text-sm text-slate-400 mt-1">Expand your network with fellow students</p>
         </div>
-        <button onClick={() => navigate('/social/connections')} className="btn-secondary w-fit">
-          <Users size={15} /> My Connections
-        </button>
       </div>
 
       {/* Tabs */}
@@ -101,7 +99,7 @@ const StudentSocial = () => {
               <div key={student._id} className="glass-card p-5 flex flex-col gap-3">
                 <div className="flex items-center gap-3">
                   {student.profilePhoto ? (
-                    <img src={student.profilePhoto} alt={student.name}
+                    <img src={resolvePhoto(student.profilePhoto)} alt={student.name}
                       className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-500/30 flex-shrink-0" />
                   ) : (
                     <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${GRAD_COLORS[idx % GRAD_COLORS.length]} flex items-center justify-center text-base font-bold text-white flex-shrink-0`}>

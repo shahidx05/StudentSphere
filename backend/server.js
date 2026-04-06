@@ -32,7 +32,6 @@ app.use('/api/lostfound',   require('./routes/lostFoundRoutes'));
 app.use('/api/campus',      require('./routes/campusRoutes'));
 app.use('/api/social',      require('./routes/socialRoutes'));
 app.use('/api/tasks',       require('./routes/taskRoutes'));
-app.use('/api/campus-pass', require('./routes/campusPassRoutes'));
 app.use('/api/admin',       require('./routes/adminRoutes'));
 
 

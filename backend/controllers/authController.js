@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { body } = require('express-validator');
 const User = require('../models/User');
+const { getFileUrl } = require('../middleware/uploadMiddleware');
 
 // Generate JWT
 const generateToken = (id) =>
@@ -68,10 +69,26 @@ exports.getMe = async (req, res, next) => {
 // @route   PUT /api/auth/update-profile
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, bio, department, branch, year, state, district } = req.body;
+    const { name, bio, department, branch, year, college, state, district, skills, interests } = req.body;
+
+    const updateData = { name, bio, department, branch, year, college, state, district };
+
+    // skills & interests can come as arrays or comma-separated strings
+    if (skills !== undefined) {
+      updateData.skills = Array.isArray(skills)
+        ? skills
+        : skills.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (interests !== undefined) {
+      updateData.interests = Array.isArray(interests)
+        ? interests
+        : interests.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (year !== undefined) updateData.year = year ? Number(year) : undefined;
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { name, bio, department, branch, year, state, district },
+      updateData,
       { new: true, runValidators: true }
     ).select('-password');
 
@@ -129,14 +146,15 @@ exports.uploadPhoto = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No file uploaded.' });
     }
 
-    const photoUrl = req.file.path || `/uploads/${req.file.filename}`;
+    const photoUrl = getFileUrl(req.file);
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { profilePhoto: photoUrl },
       { new: true }
     ).select('-password');
 
-    return res.json({ success: true, message: 'Photo uploaded.', data: { profilePhoto: user.profilePhoto } });
+    return res.json({ success: true, message: 'Photo uploaded.', data: user });
   } catch (err) {
     next(err);
   }

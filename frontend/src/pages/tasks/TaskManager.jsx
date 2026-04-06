@@ -6,7 +6,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import Modal from '../../components/ui/Modal';
 import CountdownTimer from '../../components/ui/CountdownTimer';
 import Badge from '../../components/ui/Badge';
-import { Plus, Trash2, CheckCircle2, Clock, Loader2, CheckSquare } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Clock, Loader2, Edit3 } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
 
 const STATUS_TABS = [
@@ -28,7 +28,8 @@ const TaskManager = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
-  const [form, setForm] = useState({ title: '', description: '', subject: '', deadline: '', priority: 'medium' });
+  const [form, setForm]       = useState({ title: '', description: '', subject: '', deadline: '', priority: 'medium' });
+  const [editingTask, setEditingTask] = useState(null); // task being edited
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -55,13 +56,33 @@ const TaskManager = () => {
     if (!form.title.trim()) { toast.error('Title is required'); return; }
     setSubmitting(true);
     try {
-      await api.post('/api/tasks', { ...form, deadline: form.deadline || undefined });
-      toast.success('Task created!');
+      if (editingTask) {
+        // Update
+        await api.patch(`/api/tasks/${editingTask._id}`, { ...form, deadline: form.deadline || undefined });
+        toast.success('Task updated!');
+      } else {
+        // Create
+        await api.post('/api/tasks', { ...form, deadline: form.deadline || undefined });
+        toast.success('Task created!');
+      }
       setShowAdd(false);
+      setEditingTask(null);
       setForm({ title: '', description: '', subject: '', deadline: '', priority: 'medium' });
       fetchTasks();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
     finally { setSubmitting(false); }
+  };
+
+  const openEdit = (task) => {
+    setEditingTask(task);
+    setForm({
+      title: task.title,
+      description: task.description || '',
+      subject: task.subject || '',
+      deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '',
+      priority: task.priority || 'medium',
+    });
+    setShowAdd(true);
   };
 
   const handleDelete = async (id) => {
@@ -130,7 +151,7 @@ const TaskManager = () => {
         <div className="space-y-2.5">
           {tasks.map(task => (
             <div key={task._id}
-              className={`glass-card p-4 flex items-start gap-4 ${task.status === 'completed' ? 'opacity-60' : ''}`}
+              className={`glass-card p-4 flex items-start gap-4 group ${task.status === 'completed' ? 'opacity-60' : ''}`}
               style={{ transform: 'none' }}>
               {/* Status circle */}
               <button onClick={() => handleStatusCycle(task)} disabled={updatingId === task._id}
@@ -172,18 +193,25 @@ const TaskManager = () => {
                 </div>
               </div>
 
-              {/* Delete */}
-              <button onClick={() => handleDelete(task._id)}
-                className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0">
-                <Trash2 size={14} />
-              </button>
+              {/* Actions */}
+              <div className="flex flex-col gap-1 flex-shrink-0">
+                <button onClick={() => openEdit(task)}
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all opacity-0 group-hover:opacity-100">
+                  <Edit3 size={13} />
+                </button>
+                <button onClick={() => handleDelete(task._id)}
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
       {/* Add Task Modal */}
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="New Task">
+      <Modal isOpen={showAdd} onClose={() => { setShowAdd(false); setEditingTask(null); setForm({ title: '', description: '', subject: '', deadline: '', priority: 'medium' }); }}
+        title={editingTask ? 'Edit Task' : 'New Task'}>
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Title *</label>

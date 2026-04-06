@@ -11,7 +11,7 @@ import { PageSpinner } from '../../components/ui/Spinner';
 import { formatRelative } from '../../utils/formatDate';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { MARKETPLACE_CATEGORIES, MARKETPLACE_CONDITIONS } from '../../utils/constants';
-import { Plus, Package, Tag, User, Star } from 'lucide-react';
+import { Plus, Package, Tag, User, Star, ImageOff } from 'lucide-react';
 
 const TABS = [
   { value: '', label: 'All' },
@@ -90,11 +90,26 @@ const Marketplace = () => {
               <div key={item._id} className="glass-card p-0 overflow-hidden cursor-pointer group"
                 onClick={() => navigate(`/marketplace/${item._id}`)}>
                 {/* Image */}
-                <div className="w-full h-40 bg-indigo-500/5 flex items-center justify-center overflow-hidden">
-                  {item.images?.[0]
-                    ? <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    : <Package size={32} className="text-slate-700" />
-                  }
+                <div className="w-full h-40 bg-white/[0.02] flex items-center justify-center overflow-hidden relative border-b border-indigo-500/10">
+                  {item.images?.[0] ? (
+                    <img src={item.images[0]} alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 flex-col items-center justify-center gap-1"
+                    style={{ display: item.images?.[0] ? 'none' : 'flex' }}>
+                    <ImageOff size={24} className="text-slate-700" />
+                    <span className="text-slate-600 text-[10px]">No photo</span>
+                  </div>
+                  {/* Status overlay */}
+                  {item.status && item.status !== 'available' && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold uppercase tracking-wider px-3 py-1 bg-slate-800/80 rounded-full">
+                        {item.status}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -115,9 +130,12 @@ const Marketplace = () => {
                     )}
                   </div>
                   {item.seller && (
-                    <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-500">
-                      <User size={10} /> {item.seller?.name}
-                      <span className="ml-auto">{formatRelative(item.createdAt)}</span>
+                    <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-indigo-500/10 text-[10px] text-slate-500">
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0">
+                        {item.seller?.name?.[0]?.toUpperCase() || 'S'}
+                      </div>
+                      <span className="truncate">{item.seller?.name}</span>
+                      <span className="ml-auto flex-shrink-0">{formatRelative(item.createdAt)}</span>
                     </div>
                   )}
                 </div>

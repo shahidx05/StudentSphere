@@ -1,6 +1,7 @@
 const { body } = require('express-validator');
 const Club = require('../models/Club');
 const CampusPost = require('../models/CampusPost');
+const { getFileUrl, getFilesUrls } = require('../middleware/uploadMiddleware');
 
 // ─── CLUBS ──────────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ exports.getClubs = async (req, res, next) => {
 exports.createClub = async (req, res, next) => {
   try {
     const { name, description, category, contactEmail, recruitmentOpen, recruitmentStartDate, recruitmentEndDate } = req.body;
-    const logo = req.file ? (req.file.path || `/uploads/${req.file.filename}`) : '';
+    const logo = getFileUrl(req.file) || '';
 
     const club = await Club.create({
       name, description, category, contactEmail,
@@ -167,7 +168,7 @@ exports.getPosts = async (req, res, next) => {
 exports.createPost = async (req, res, next) => {
   try {
     const { title, content, type, club, eventDate, eventVenue } = req.body;
-    const images = req.files ? req.files.map((f) => f.path || `/uploads/${f.filename}`) : [];
+    const images = getFilesUrls(req.files);
 
     const post = await CampusPost.create({
       title, content, type, club, eventDate, eventVenue, images,
