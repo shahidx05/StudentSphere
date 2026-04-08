@@ -313,6 +313,22 @@ The repo includes `frontend/vercel.json` for SPA routing:
 
 ---
 
+## 👨‍💻 Team & Contact
+
+This project was collaboratively built by a team **Nexora**.
+
+### 👤 Shahid Khan
+**Role:** Full Stack Developer (Frontend + Backend)
+- 🔗 LinkedIn: [linkedin.com/in/shahidx05](https://www.linkedin.com/in/shahidx05)
+- 🐦 Twitter (X): [x.com/shahidx_05](https://x.com/shahidx_05)
+- 🐙 GitHub: [github.com/shahidx05](https://github.com/shahidx05)
+
+### 👤 Priyanshu Soundarkar
+**Role:** Software Developer (Support & Testing)
+- 🐙 GitHub: [github.com/ki-lgtm](https://github.com/ki-lgtm)
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository
